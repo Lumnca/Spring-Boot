@@ -1,18 +1,111 @@
-# :golf:开发第一个Spring Boot程序 #
+# :golf:Spring 入门  #
 
 <b id="t"></b>
 
-:arrow_double_down:[创建Maven工程](#a1)
+:arrow_double_down:[开发第一个Spring Boot程序](#a1)
 
 
 
 
 <b id="a1"></b>
 
-### :bowling:创建Maven工程 ###
+### :bowling:开发第一个Spring Boot程序 ###
 
 :arrow_double_up: [返回目录](#t)
 
-Spring Boot 可以通过很多中方式来创建，最通用的就是通过Maven了，因为大多数的IDE都支持Maven。
+Spring Boot 可以通过很多中方式来创建，最通用的就是通过Maven了，因为大多数的IDE都支持Maven。首先就是Maven的配置与安装，可以参考这篇文章[IDEA配置Maven](https://zhuanlan.zhihu.com/p/48831465)
+
+配置完毕后，我们可以建立一个最简单的Spring-boot程序。如下操作：
+
+在工程界面选中Maven，我们这里暂时不使用框架，什么都不选，直接next:
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a1.png)
+
+后面命名直接命名，没有什么苛刻的要求，创建完毕后来到我们的主界面：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a2.png)
+
+这里的pom.xml即为我们的主配置文件，接下来为了能够启用Spring Boot，添加配置：
+
+**添加依赖**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>as</groupId>
+    <artifactId>as</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.0.4.RELEASE</version>
+    </parent>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+```
+
+这是添加Spring Boot的依赖和配置，就不需要像以前那样去获取包，再添加包。接下来做的是就是编写启动类：
+
+**编写启动类**
+
+在src的main文件夹下创建包并创建一个启动类app：
+
+```java
+package Start;
+
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication   //自动化配置加注解扫描
+public class app {
+    public static  void main(String[] args){
+        SpringApplication.run(app.class,args);
+    }
+}
+```
+
+**web主体**
+
+在与启动类同一个包下添加一个控制器类：
+
+```java
+package Start;
+
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController   //控制器注解
+public class index {
+    @GetMapping("/index")  //路径注解
+    public String index(){
+        return  "Hello Spring Boot!";   //显示文字内容
+    }
+}
+
+```
+
+至此，所有配置就已经完成，接下来就是项目启动，直接运行main类，控制器若出现如下所示的图：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a3.png)
+
+说明配置成功，在浏览器上面输入url ： `http://localhost:8080/index` 看到显示文字，说明配置完成。
+
+
+
+
+
 
 

@@ -6,6 +6,8 @@
 
 :arrow_double_down:[@SpringBootApplication](#a2)
 
+:arrow_double_down:[Web容器配置](#a2)
+
 
 <b id="a1"></b>
 
@@ -60,19 +62,147 @@ spring-boot-starter-parent虽然方便，但是更多的时候使用自己的par
 
 @SpringBootApplication注解是加在项目启动类上的，实际上它是一个组合注解。这个注解是由三个注解组成。如下：
 
-**@SpringBootConfiguration**
+**:one:@SpringBootConfiguration**
 
 @SpringBootConfiguration的功能就是一个配置类，开发者可以在这个类中配置Bean。从这个角度来讲，这个类所扮演的角色有点类似于Spring中的applicationContext.xml文件的角色。
 
-**@EnableAutoConfiguration**
+**:two:@EnableAutoConfiguration**
 
 @EnableAutoConfiguration表示开启自动化配置，Spring Boot中的自动化配置是非侵入式的，在任意时刻，开发者都可以使用自定义配置代替自动化配置中的某一个位置。
 
-**@ComponentScan**
+**:three:@ComponentScan**
 
 @ComponentScan完成包扫描，也是Spring中的功能，由于@ComponentScan注解默认扫描的类都位于当前类所在包的下面，因此建议在实际项目开发中把项目启动类放在根包中。也就是启动注解类所在的类。
 
 虽然项目的启动类也包含@Configuration注解，但是可以一个新的类专门用来配置Bean，这样便于配置管理，这个类只需要加上@Configuration注解即可。
+
+<b id="a3"></b>
+
+### :bowling:Web容器配置 ###
+
+:arrow_double_up: [返回目录](#t)
+
+由于我们使用最多的是tomcat，所以这里只说明tomcat的配置
+
+**:one:常规配置**
+
+在Spring Boot项目中，默认是使用tomcat作为配置容器。可以在main文件夹下的resources文件夹下的application.properties文件。添加如下配置：
+
+```
+server.port=8081
+server.error.path= /error
+server.servlet.session.timeout=30m
+server.servlet.context-path=/index
+server.tomcat.uri-encoding=UTF-8
+server.tomcat.max-threads=500
+server.tomcat.basedir=/home/sang/tmp
+```
+
+其中按照从上到下的顺序是：
+
+* Web容器的端口号。
+* 项目出错时跳转的页面
+* session.timeout配置了失效时间，30m代表30分钟，如果不写单位默认单位是秒
+* context-path表示项目名称，不配置时默认为/，如果配置了就要在访问路径上加上配置路径。
+* uri-encoding表示配置Tomcat请求编码。
+* max-threads表示Tomcat最大线程数。
+* basedir是一个存放Tomcat运行日志和临时文件的目录，若不配置，则使用系统临时的目录。
+
+配置完成直接运行即可，因为做了配置，所以访问原来网站的路径需要改为`http://localhost:8081/index/index`
+
+
+**:two:常规配置**
+
+由于Https具有良好的安全性，在开发中得到了越来越广泛的应用，对于个人开发者而言，一个HTTPS证书的价格还是有点贵，在jdk中提供了一个java数字证书管理工具keytool，在\jdk\bin目录下，通过这个工具可以生成一个数字证书，生成命令如下
+
+```
+keytool -genkey -alias tomcathttps -keyalg RSA -keysize 2048 -keystore sang.p12 -validity 365
+```
+
+其中 -alias 后面跟密匙别名，-keyalg后接加密算法，常用RSA，-keysize 2048 接密匙长度，-keystore后接生成密匙文件名，-validity 密匙有效天数
+
+上面这条命令在cmd下使用，如果你的jdk环境装在C盘，使用管理员权限打开才能使用，按照提示信息填完，如下：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a7.png)
+
+输入密匙的时候不会显示密码，输入两次一样即可，唯一要求长度要大于6。可以为纯数字。
+
+填完信息后，文件后保存在你所运行cmd的目录下，比如我运行时目录在C:\Windows\System32，所以我需要去这个文件夹找到我命名的sang.p12
+
+文件过多可以搜索，如下：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a8.png)
+
+把生成的文件复制到项目的根目录下，再在application.properties添加配置：
+
+```
+server.ssl.key-store=sang.p12               //密匙文件
+server.ssl.key-alias=tomcathttps            //密匙别名
+server.ssl.key-store-password=123456        //密匙密码
+```
+
+
+点击运行，出现以下：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a9.png)
+
+按照上面操作即可。注意是https，如果以http访问，会访问失败。这是因为Spring Boot不支持同时在配置中启动http和https，这个时候可以配置重定向将http请求重定向为https请求，配置方式如下：
+
+添加一个配置类：
+
+```
+package com.example.myboot;
+
+
+import org.apache.catalina.Context;
+import org.apache.catalina.connector.Connector;
+import org.apache.tomcat.util.descriptor.web.SecurityCollection;
+import org.apache.tomcat.util.descriptor.web.SecurityConstraint;
+import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class tomcatConfig {
+    @Bean
+    TomcatServletWebServerFactory tomcatServletWebServerFactory(){
+        TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory(){
+            @Override
+            protected void postProcessContext(Context context){
+                SecurityConstraint constraint = new SecurityConstraint();
+
+                constraint.setUserConstraint("CONFIDENTIAL");
+
+                SecurityCollection collection = new SecurityCollection();
+
+                collection.addPattern("/*");
+
+                constraint.addCollection(collection);
+
+                context.addConstraint(constraint);
+            }
+        };
+        factory.addAdditionalTomcatConnectors(createTomcatConnector());
+        return  factory;
+    }
+
+    private Connector createTomcatConnector(){
+        Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+        connector.setScheme("http");
+        connector.setPort(8080);
+        connector.setSecure(false);
+        connector.setRedirectPort(8081);
+        return connector;
+    }
+}
+```
+
+这里首先配置一个TomcatServletWebServerFactory类，然后添加一个Tomcat中的Connector（监听8080端口）并将请求转发到8081端口。在浏览器输入`http://localhost:8080/index`会自动转到`https://localhost:8081/index`端口。
+
+这就是tomcat的主要配置。使用这些可以完成基本的需求使用，
+
+
+
 
 
 

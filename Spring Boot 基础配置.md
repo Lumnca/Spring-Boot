@@ -8,6 +8,8 @@
 
 :arrow_double_down:[Web容器配置](#a3)
 
+:arrow_double_down:[Properties配置](#a4)
+
 
 <b id="a1"></b>
 
@@ -201,13 +203,64 @@ public class tomcatConfig {
 
 这就是tomcat的主要配置。使用这些可以完成基本的需求使用，
 
+<b id="a4"></b>
 
+### :bowling:Properties配置 ###
 
+:arrow_double_up: [返回目录](#t)
 
+虽然Spring Boot中采用了大量的自动化配置，但是对于开发者而言，在实际中还是需要自己手动配置，承载这些配置的就是resources目录下的application.properties文件，前面的web容器配置也就是在这里面配置的，
 
+**:one:类型安全配置属性**
 
+Spring提供了@Value注解以及EnvironmentAware接口来将Spring Environment中的数据注入到属性上，Spring Boot对此进一步提出了类型安全配置属性，这样即使数据量非常多的情况下，也可以更加方便地将配置文件数据注入Bean中，如在application.properties配置文件添加如下配置：
 
+```java
+book.name=三国演义
+book.author=罗贯中
+book.price=40
+```
 
+然后就是配置数据注入Bean：
+
+```java
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.stereotype.Component;
+
+@Component
+@ConfigurationProperties(prefix = "book")
+public class book {
+    private String name;
+    private String author;
+    private Float price;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Float getPrice() {
+        return price;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public void setPrice(Float price) {
+        this.price = price;
+    }
+}
+```
+
+其中@ConfigurationProperties中的prefix属性决定了要加载配置文件的前缀，如上是book，表明说明加载book
 
 
 

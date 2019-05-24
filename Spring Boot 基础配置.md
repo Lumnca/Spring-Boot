@@ -10,6 +10,8 @@
 
 :arrow_double_down:[Properties配置](#a4)
 
+:arrow_double_down:[YAML配置](#a5)
+
 
 <b id="a1"></b>
 
@@ -260,9 +262,185 @@ public class book {
 }
 ```
 
-其中@ConfigurationProperties中的prefix属性决定了要加载配置文件的前缀，如上是book，表明说明加载book
+其中@ConfigurationProperties中的prefix属性决定了要加载配置文件的前缀，如上是book，表明说明加载book。这样他就会把配置文件中的book对应的属性进行绑定。最后只需要在控制器中添加注解引用即可：
+
+```java
+@RestController
+public class start {
+
+    @Autowired
+    book oneBook;
+
+    @GetMapping("/index")
+    public String index(){
+
+        return  "书名:"+ oneBook.getName()+"<br>作者："+oneBook.getAuthor()+"<br>价格："+oneBook.getPrice();
+    }
+}
+```
+
+当然一开始输出会中文乱码，这是由于没有对配置文件进行编码导致的，在IDEA的setting中如下修改：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a10.png)
+
+修改后在配置文件处的中文会乱码，重新输入中文即可，在此运行，这样显示就不会乱码。
+
+<b id="a5"></b>
+
+### :bowling:YAML配置 ###
+
+:arrow_double_up: [返回目录](#t)
+
+**:one:常规配置**
+
+YAML是JSON的超集，简洁而强大，是一种专门用来书写配置文件的语言，可以代替application.properties，在创建一个Spring Boot项目时，引入的spring-boot-starter-web依赖间接地引入了snakeyaml依赖，它会实现对YAML配置的解析，YAML的使用非常简单，利用缩进来表示层级关系，并且大小写敏感，在Spring Boot项目中使用YAML只需要在resources文件夹下创建一个application.yml文件即可，并在其中添加如下配置：
+
+```
+server:
+  port: 86
+  servlet:
+    context-path: /app
+  tomcat:
+    uri-encoding: UTF-8
+```
+
+这个配置比较容易看懂，就是将86作为端口号，路径为/app，编码使用UTF-8编码。
+
+**:two:复杂配置**
+
+YAML不仅可以配置基础属性，还可以配置复杂属性，如下是完成上面的bean配置：
+
+```
+book:
+  name: 三国志
+  author : 罗贯中
+  price : 30
+```
+
+这样就可以注入数据，YAML还支持列表的配置，如下：
+
+```
+book:
+  name: 三国志
+  author : 罗贯中
+  price : 30
+  chapter :
+    - 桃园结义
+    - 董卓乱政
+```
+
+使用 - 代表列表项，对应的需要在bean中添加属性：
+
+```java
+ private List<String> chapter;
+ 
+     public List<String> getChapter() {
+        return chapter;
+    }
+
+    public void setChapter(List<String> chapter) {
+        this.chapter = chapter;
+    }
+```
+
+然后就可以访问了：
+
+```java
+@RestController
+public class start {
+
+    @Autowired
+    book oneBook;
+
+    @GetMapping("/index")
+    public String index(){
+
+        return  "书名:"+ oneBook.getName()+"<br>作者："+oneBook.getAuthor()+"<br>价格："+oneBook.getPrice()
+                +"章节:"+oneBook.getChapter().get(0)+"<br>"+oneBook.getChapter().get(1);
+    }
+}
+
+```
+
+当然也可以支持更复杂的配置，只需要满足缩进关系即可：
 
 
+```
+customer :
+  name : 刘二狗
+  id : KJ132321
+  ownBook :
+    - name : 三国演义
+      author : 罗贯中
+      price : 30
+      chapter :
+        - 1
+        - 2
+    - name : 西游记
+      author : 吴承恩
+      price : 40
+      chapter :
+        - 1
+        - 2
+```
+
+添加顾客类：
+
+```java
+@Component
+@ConfigurationProperties(prefix = "customer")
+public class customer {
+    private String name;
+    private String id;
+    private List<book> ownBook;
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setOwnBook(List<book> ownBook) {
+        this.ownBook = ownBook;
+    }
+
+    public List<book> getOwnBook() {
+        return ownBook;
+    }
+}
+```
+
+最后再在控制器中调用即可。
+
+```java
+@RestController
+public class start {
+
+    @Autowired
+    book book;
+    @Autowired
+    customer customer;
+
+    @GetMapping("/index")
+    public String index(){
+
+        book book1 = customer.getOwnBook().get(0);
+        return  "客户名："+customer.getName()+"<br>"+
+                "购买书籍:"+book1.getName()+"<br>"+
+                customer.getOwnBook().get(1).getName();
+    }
+}
+```
 
 
 

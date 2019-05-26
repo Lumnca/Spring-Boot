@@ -4,6 +4,8 @@
 
 :arrow_down:[返回JSON数据](#a1)
 
+:arrow_down:[返回JSON数据](#a2)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:返回JSON数据 ###
@@ -34,10 +36,11 @@ public class start {
 }
 ```
 
-由于返回的是对象，所以会自动解析为JSON字符格式，接下来运行即可。`http://localhost:86/json`
+由于返回的是对象，所以会自动解析为JSON字符格式，接下来运行即可。`http://localhost:86/json`，看到对象JOSN字符串`{"name":"三国演义","author":"罗贯中","price":30.0,"chapter":null}`说明运行成功。
 
+### :two:自定义转换器 ###
 
-
+前面的转换器是默认的jackson-databind，除此之外，还有GSon和fastjson，这里只用fastjson。有关fastjson可以参考我的另一个笔记[]()
 
 
 

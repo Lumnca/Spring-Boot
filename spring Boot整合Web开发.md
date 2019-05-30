@@ -6,6 +6,8 @@
 
 :arrow_down:[静态资源访问](#a2)
 
+:arrow_down:[文件上传](#a3)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:返回JSON数据 ###
@@ -170,10 +172,10 @@ classPath: /public
 
 可以在application.properties中直接定义过滤规则和静态资源位置，代码如下：
 
-```
-
-
-
+```java
+spring.http.encoding.force-response=true
+spring.mvc.static-path-pattern=/static/**
+spring.resources.static-locations=classpath:/static/
 ```
 
 过滤规则为`/static/**`，静态资源位置为/statics/ 重启项目访问即可。
@@ -181,22 +183,130 @@ classPath: /public
 * 2.JAVA编码定义，也可以通过Java编码来实现，只需要实现WebMvcConfigurer接口即可，然后就是实现该接口的addResourceHandles方法代码如下：
 
 ```java
-
+@Configuration
+public class myWebStaticConfig implements WebMvcConfigurer {
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry){
+        registry.addResourceHandler("/static/**").
+                addResourceLocations("classpath:/static/");
+    }
+}
 ```
 
 
+<b id="a3"></b>
+
+### :fallen_leaf:文件上传 ###
+
+:arrow_double_up:[返回目录](#t)
+
+在以前学的的东西可以知道，文件上传我们是使用包或者servlet3.0来完成文件上传，在Spring Boot中提供了文件上传自动化配置类MultipartAutoConfiguration中，默认也是采用StandardServletMultipartResolver。在这个类中展示到如果开发者没有提供MultipartResolve，那么默认采用的就是StandardServletMultipartResolver，因此在Spring Boot中上传文件甚至可以到零配置。
+
+**:one:单文件上传**
+
+项目只要有spring-boot-start-web依赖。就可以直接使用，在静态文件夹创建一个上传的html文件：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="uploadFile" value="选择文件">
+        <input type="submit" value="上传">
+    </form>
+</body>
+</html>
+```
+
+和以前的上传文件形式一样，方法必须为post，且必须含有enctype="multipart/form-data"。下面编写接口：
 
 
+```java
+@RestController
+public class file {
+    @PostMapping("/upload")
+    public  String upload(MultipartFile uploadFile, HttpServletRequest request){
+        if (uploadFile.isEmpty()) {
+            return "上传失败，请选择文件";
+        }
 
+        String fileName = uploadFile.getOriginalFilename();
+        String filePath = System.getProperty("user.dir") ;
+        System.out.println(filePath+fileName);
+        File dest = new File(filePath+"/"+fileName);
+        try {
+            uploadFile.transferTo(dest);
+            return "success";
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return "fail！";
+    }
+}
+```
 
+上面就是上传文件简单的代码，该文件会上传到项目的根目录下。因为` System.getProperty("user.dir") `获取的是项目的路径名称，transferTo为文件上传方法。这样就完成了一个简单的文件上传。当然可以在配置文件中为文件上传进行配置其配置如下：
 
+```
+spring.servlet.multipart.enabled=true
+spring.servlet.multipart.file-size-threshold=0
+spring.servlet.multipart.location=F:\\myboot
+spring.servlet.multipart.max-file-size=1MB
+spring.servlet.multipart.max-request-size=10MB
+spring.servlet.multipart.resolve-lazily=false
+```
 
+* 其中第一行是是否开启文件上传，默认true。
+* 第二行为文件写入磁盘阈值，默认为0（直接写入磁盘）
+* 第三行为文件上传的临时保存位置
+* 第四行表示单文件上传的最大大小。默认为1MB
+* 第五行是多文件上传的总大小。默认为10MB
+* 最后一样是文件是否延迟解析。
 
+**:two:多文件上传**
 
+多文件上传与单文件上传一致，需要修改的是表单：
 
+```html
+<form action="/upload" method="POST" enctype="multipart/form-data">
+    <input type="file" name="uploadFiles" value="选择文件" multiple>   <!--添加一个 multiple属性-->
+    <input type="submit" value="上传">
+</form>
+```
 
+对于接口处理就是文件数组，而不是以前的单文件参数：
 
+```
+@RestController
+public class file {
+    @PostMapping("/upload")
+    public  String upload(MultipartFile[] uploadFiles, HttpServletRequest request){
+        int a = 0;
+        for (MultipartFile file:uploadFiles
+             ) {
+            if (!file.isEmpty()) {
+                String fileName = file.getOriginalFilename();
+                String filePath = System.getProperty("user.dir") ;
+                System.out.println(filePath+fileName);
+                File dest = new File(filePath+"/target/classes/static/"+fileName);
+                try {
+                    file.transferTo(dest);
+                    a++;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return "上传文件数:"+uploadFiles.length+"  成功上传"+a+"个文件";
+    }
+}
+```
 
+核心就在于我们需要使用迭代来完成文件上传工作，这和单文件上传思路是一样的。
 
 
 

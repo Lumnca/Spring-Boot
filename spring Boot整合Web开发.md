@@ -8,6 +8,8 @@
 
 :arrow_down:[文件上传](#a3)
 
+:arrow_down:[@ControllerAdvice](#a4)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:返回JSON数据 ###
@@ -308,16 +310,85 @@ public class file {
 
 核心就在于我们需要使用迭代来完成文件上传工作，这和单文件上传思路是一样的。
 
+<b id="a4"></b>
 
+### :fallen_leaf:@ControllerAdvice ###
 
+:arrow_double_up:[返回目录](#t)
 
+**:one:全局异常处理**
 
+@ControllerAdvice最常见的使用场景就是全局异常处理。@ControllerAdvice结合@ExceptionHandler定义全局异常捕获机制：
 
+```java
+@ControllerAdvice
+public class CustomExceptionHandler {
+    @ExceptionHandler(Exception.class)
+    public void upLoadException(HttpServletResponse response)throws IOException {
+        response.setContentType("text/html;charset=utf-8");
+        PrintWriter out = response.getWriter();
+        out.write("出现错误");
+        out.flush();
+        out.close();
+    }
+}
+```
 
+Exception.class是所有错误的类，它可以捕获所有出错的类型，并做出一致的错误反馈。当然在这个类里面添加任意参数和返回类型，可以返回的是一段话，也可以是一个错误界面，只需要输入对应的方法即可。
 
+**:two:添加全局数据**
 
+@ControllerAdvice也是一个全局数据处理组件，因此也可以在@ControllerAdvice中配置全局数据，使用@ModelAttribute注解进行配置，如下：
 
+```java
+@ControllerAdvice
+public class GlobalConfig {
+    @ModelAttribute(value = "info")
+    public Map<String,String>  userInfor(){
+       HashMap<String,String> map = new HashMap<>();
+       map.put("Name","小明");
+       map.put("sex","男");
+       return  map;
+    }
+    @ModelAttribute(value = "welcome")
+    public  String Hello(){
+        return "Hello Spring Boot";
+    }
+    @ModelAttribute(value = "number")
+    public int Number(){
+        return 123456;
+    }
+}
+```
 
+其中@ModelAttribute注解的value参数就是全局数据的key。我们可以在控制器来访问他们：
+
+```java
+    @GetMapping("infor")
+    public String infor(Model model){
+        String infor = "";
+        //获取全局数据
+        Map<String,Object> map = model.asMap();
+        
+        //获取key值
+        Set<String> keySet = map.keySet();
+
+        //key迭代器
+        Iterator<String> iterator = keySet.iterator();
+
+        while (iterator.hasNext()){
+            //寻找下一个key值
+            String key = iterator.next();
+            //获取value值
+            Object value = map.get(key);
+
+            infor = infor+key+">>>>>>"+value.toString()+"<br>";
+        }
+        return  "全局数据："+infor;
+    }
+```
+
+像这样就可以做到全局Mode了数据共用。
 
 
 

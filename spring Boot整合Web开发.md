@@ -391,5 +391,32 @@ public class GlobalConfig {
 像这样就可以做到全局Mode了数据共用。
 
 
+**:three:请求参数预处理**
+
+@ControllerAdvice也可以结合@InitBinder还能实现请求参数预处理，即将表单中的数据绑定到实体类上时进行一些额外处理。
+
+例如有两个实体类：
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

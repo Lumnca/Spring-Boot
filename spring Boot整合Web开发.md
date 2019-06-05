@@ -397,6 +397,140 @@ public class GlobalConfig {
 
 例如有两个实体类：
 
+author类：
+```java
+public class author {
+    private String name;
+    private  int age;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    public int getAge() {
+        return age;
+    }
+}
+```
+
+book类：
+
+```java
+public class book {
+    private String name;
+    private Float price;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Float getPrice() {
+        return price;
+    }
+
+    public void setPrice(Float price) {
+        this.price = price;
+    }
+}
+```
+
+我们需要在控制器完成两个类的数据绑定：
+
+```java
+    public String infor(author authors,book books){
+        return "作者名："+authors.getName()+" 年龄："+authors.getAge()+"<br>"
+        +"书名："+books.getName()+" 价格："+books.getPrice();
+    }
+```
+
+这样的形式两个类参数无法绑定而且两个类均匀有name属性会产生混淆。所以这个时候我们可以采用@ControllerAdvice结合@InitBInder可以顺利的解决问题，配置如下：
+
+首先给控制器方法添加@ModelAttribute注解：
+
+```java
+    @GetMapping("infor")
+    @ResponseBody
+    public String infor(@ModelAttribute("a") author authors,@ModelAttribute("b") book books){
+        return "作者名："+authors.getName()+" 年龄："+authors.getAge()+"<br>"
+        +"书名："+books.getName()+" 价格："+books.getPrice();
+    }
+```
+
+然后再配置前面所说的@ControllerAdvice：
+
+```java
+@ControllerAdvice
+public class GlobalConfig {
+    @InitBinder("b")
+    public void  init(WebDataBinder binder){
+        binder.setFieldDefaultPrefix("b.");
+    }
+    @InitBinder("a")
+    public void init2(WebDataBinder binder){
+        binder.setFieldDefaultPrefix("a.");
+    }
+}
+```
+
+在 GlobalConfig类中创建两个方法，第一个代表的是 @InitBinder("b")处理@ModelAttribute("b")所对应的参数。第二个代表的是@InitBinder("a")处理@ModelAttribute("a")所对应的参数。
+
+
+setFieldDefaultPrefix意为设置前缀，好区分属性名，接下来就可以在html界面传值：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<form action="/infor" method="GET">
+   作者名: <input type="text" name="a.name" ><br>
+   作者年龄： <input type="text" name="a.age" ><br>
+    书名：<input type="text" name="b.name" ><br>
+    价格：<input type="text" name="b.price" ><br>
+    <input type="submit" value="完成">
+</form>
+</body>
+</html>
+````
+
+这样就可以实现属性一一对应传值。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -510,11 +510,54 @@ setFieldDefaultPrefix意为设置前缀，好区分属性名，接下来就可�
 
 这样就可以实现属性一一对应传值。
 
+**:four:自定义错误界面**
+
+前面说过有过全局处理来实现错误处理，当然我们也可以使用html界面来实现不同的错误界面。spring boot自带有错误界面，我们可以去修改这个界面,对于修改错误界面，不需要我们去配置选项，系统自定义的错误文件在static下的error下的对应界面（没有可以自行创建）如下：
+
+我们自己创建了这个文件：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a11.png)
+
+这样我们就覆盖了原有的错误界面，接下来可以进行测试：
+
+输入一个不存在的url路径即可看到404界面
+
+对于500错误，我们可以简单的写个错误程序：
 
 
+```java
+    @GetMapping("/hello")
+    public String hello(){
+        int  i = 1/0;
+        return "hello";
+    }
+```
 
+访问该界面即可看到，注意，一定要取消前面的异常捕获，要不然会被转到异常捕获界面。
 
+上面是详细的错误方式404,500，如果想对这一类的处理可以将html文件改成4xx.html,和5xx.html。如果你设置了404界面和4xx，那么优先级是404，然后就是4xx.
 
+可以使用模板也来显示详细错误信息：
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org/">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h3>出错了</h3>
+    时间:<p th:text="${timestamp}"></p><br>
+    错误码:<p th:text="${status}"></p><br>
+    错误类型:<p th:text="${error}"></p><br>
+    错误信息:<p th:text="${message}"></p><br>
+    访问路径: <p th:text="${path}"></p><br>
+</body>
+</html>
+```
+
+前提是添加了依赖，和创建在模板文件下。
 
 
 

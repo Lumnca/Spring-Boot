@@ -10,6 +10,10 @@
 
 :arrow_down:[@ControllerAdvice](#a4)
 
+:arrow_down:[CORS支持](#a5)
+
+:arrow_down:[注册拦截器](#a6)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:返回JSON数据 ###
@@ -557,7 +561,83 @@ setFieldDefaultPrefix意为设置前缀，好区分属性名，接下来就可�
 </html>
 ```
 
-前提是添加了依赖，和创建在模板文件下。
+前提是添加了依赖，和创建在模板文件下。修改默认界面的方法还有很多这里就不一一介绍了，可自行网上查阅资料。
+
+<b id="a5"></b>
+
+### :fallen_leaf:CORS支持 ###
+
+:arrow_double_up:[返回目录](#t)
+
+CORS是由W3C制定的一种跨域资源共享技术标准，其目的就是为了解决前端跨域请求。在JavaEE开发中，最常见的前端跨域请求解决方案就是JSONP，但是JSONP只支持GET请求，这是一个很大的缺陷，而CORS则支持多种HTTP请求方法，以CORS中的GET为例
+
+`响应头中有一个Acess-Control-Allow-Origin字段，用来记录可以访问该资源的域。当浏览器收到这样的响应头信息之后，提取出Access-Control-Allow-Origin字段中的值，发现该值包含当前页面所在的域，就知道这个跨域是被允许的，因此就不再对前端的跨域请求进行限制。这就是GET请求的整个跨域流程，在这个过程中，前端请求的代码不需要修改，主要是后端进行处理。这个流程主要是针对GET、POST以及HEAD请求，并且没有自定义请求头，如果用户发起一个DELETE请求、PUT请求或者自定义了请求头，流程就会稍微复杂一些。`
+
+在Spring Boot中配置CORS步骤如下：
+
+只要添加了Web依赖就可以直接使用，创建控制器：
+
+```java
+@RequestMapping("/cors")
+public class cors {
+        @GetMapping("/get")
+        @CrossOrigin(value = "http://localhost:86",maxAge = 1800,allowedHeaders = "*")
+        public String get(){
+            return  "Receive : CORS";
+        }
+}
+```
+
+上面代码中@CrossOrigin注解代表跨域配置，其中value是表示支持的域，这里表示来自`http://localhost:86`端口的请求运行跨域到本服务中，maxAge代表请求的有效时间，，这个属性默认是1800秒即30分钟。allowedHeaders代表运行的请求头，`*` 代表所有的请求头都被允许。这种方式是一种细粒的配置，可以控制到每个方法上，当然可以使用全局配置,在设置的全局配置文件中添加如下方法：
+
+```java
+    public void  addCorsMappings(CorsRegistry registry)
+    {
+        registry.addMapping("/cors/**")
+                .allowedHeaders("*")
+                .allowedMethods("*")
+                .maxAge(1800)
+                .allowedOrigins("http://localhost:86");
+    }
+```
+
+最后测试要使用两个不同的域，不能在同一项目中运行，因为项目的域是一样的，所以需要启动两个域，在其中一个域上添加CORS请求：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<p id="infor"></p>
+<script>
+    var xmlHttp = new XMLHttpRequest();        //创建XMLHttpRequest实例
+    xmlHttp.open("GET","http://localhost:87/cors/get",false);      //打开请求
+    xmlHttp.send(null);                        //发送
+    document.getElementById("infor").innerText = xmlHttp.responseText
+</script>
+</body>
+</html>
+```
+
+<b id="a6"></b>
+
+### :fallen_leaf:注册拦截器 ###
+
+:arrow_double_up:[返回目录](#t)
+
+Spring MVC中提供了AOP风格的拦截器，拥有更加精细的拦截处理能力。Spring Boot中拦截器的注册更加方便，如下：
+
+```java
+
+```
+
+
+
+
+
 
 
 

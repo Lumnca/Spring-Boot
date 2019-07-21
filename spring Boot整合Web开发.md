@@ -12,7 +12,7 @@
 
 :arrow_down:[CORS支持](#a5)
 
-:arrow_down:[注册拦截器](#a6)
+:arrow_down:[整合Servlet，Filter和Listener](#a6)
 
 <b id="a1"></b>
 
@@ -624,18 +624,45 @@ public class cors {
 
 <b id="a6"></b>
 
-### :fallen_leaf:注册拦截器 ###
+### :fallen_leaf:整合Servlet，Filter和Listener ###
 
 :arrow_double_up:[返回目录](#t)
 
-Spring MVC中提供了AOP风格的拦截器，拥有更加精细的拦截处理能力。Spring Boot中拦截器的注册更加方便，如下：
+一般情况下，使用Spring，Spring MVC这些框架后，基本就告别了Servlet，Filter和Listener了，但是有时在整合一些第三方框架时，可能还是会使用Servlet，Spring Boot中对于这些整合这些基本Web组件也是提供了很好的支持。，如下：
+
+添加一个Servlet：
 
 ```java
+@WebServlet("/my")
+class MyServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            response.sendRedirect("/json");
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
 
+    }
+    protected void doPost(HttpServletRequest request, HttpServletResponse response){
+        doGet(request,response );
+    }
+}
 ```
 
+为了能够使用这些，必须使用在开始类使用注解`@ServletComponentScan`
 
+```java
+@SpringBootApplication
+@ServletComponentScan
+public class MybootApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(MybootApplication.class, args);
+    }
+}
+```
 
+当然也可以使用Filter
 
 
 

@@ -14,6 +14,10 @@
 
 :arrow_down:[整合Servlet，Filter和Listener](#a6)
 
+:arrow_down:[配置AOP](#a7)
+
+:arrow_down:[自定义](#a8)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:返回JSON数据 ###
@@ -662,36 +666,225 @@ public class MybootApplication {
 }
 ```
 
-当然也可以使用Filter
+当然也可以使用Filter 过滤没有session信息不能进入json方法，如下：
+
+```java
+@WebFilter("/json")       //监听/json端口
+class MyFileter implements Filter{
+    public void init(FilterConfig filterConfig){
+        System.out.println("监听器启动");
+    }
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        HttpServletResponse response = (HttpServletResponse)servletResponse;
+        HttpServletRequest  request = (HttpServletRequest)servletRequest;
+
+        HttpSession session = request.getSession();
+
+        if (session.getAttribute("user")==null) {          //session会话对象对空，即没有登录成功
+            response.sendRedirect("/upload.html");            //返回界面重新登录
+            System.out.println("没有得到认证信息");
+        }
+        else{
+            System.out.println("认证成功");
+            filterChain.doFilter(request,response);                    //成功则把请求传回过滤链，必须含有
+        }
+    }
+    public void destroy(){
+
+    }
+}
+```
+
+Filter也必须使用`@ServletComponentScan`注解。
+
+也可以使用监听器来监视事件，如下是对Session信息的监听：
+
+```java
+@WebListener
+class MyListenter implements HttpSessionAttributeListener,ServletRequestListener{
+    public void requestInitialized(ServletRequestEvent sre)
+    {
+
+    }
+    public  void  attributeAdded(HttpSessionBindingEvent se){
+        System.out.println("Session信息："+se.getName()+" >>"+se.getValue());
+    }
+    public  void attributeRemoved(HttpSessionBindingEvent se){
+
+    }
+    public  void attributeReplaced(HttpSessionBindingEvent se){
+
+    }
+}
+```
+
+如上每添加一个Session信息，就会输出一条信息。同样的也需要使用`@ServletComponentScan`注解。像这样就可以使用Servlet里的服务配置。
+
+<b id="a7"></b>
+
+### :fallen_leaf:配置AOP ###
+
+:arrow_double_up:[返回目录](#t)
+
+AOP面向切面编程，首先需要了解这样一个场景：公司有一个人力资源管理系统目前已经上线，但是系统运行不稳定，有时运行得很慢，为了检测出到底是哪个环节出问题了，开发人员想要监控每一个方法的执行时间，再根据这些执行时间判断出问题所在。当问题解决后，再把这些监控移除掉。系统目前已经运行，如果手动修改系统中成千上万个方法，那么工作量未免太大，而且这些监控方法以后还要移除掉；如果能够在系统运行过程中动态添加代码，就能很好地解决这个需求。这种在系统运行时动态添加代码的方式称为面向切面编程（AOP）。Spring框架对AOP提供了很好的支持。在AOP中，有一些常见的概念需要读者了解。
+
+`Joinpoint（连接点）：类里面可以被增强的方法即为连接点。例如，想修改哪个方法的功能，那么该方法就是一个连接点。`
+
+`Pointcut（切入点）：对Joinpoint进行拦截的定义即为切入点。例如，拦截所有以insert开始的方法，这个定义即为切入点。`
+
+`Advice（通知）：拦截到Joinpoint之后所要做的事情就是通知。例如，上文说到的打印日志监控。通知分为前置通知、后置通知、异常通知、最终通知和环绕通知。`
+
+`Aspect（切面）：Pointcut和Advice的结合。`
+
+`Target（目标对象）：要增强的类称为Target`
+
+Spring Boot在Spring的基础上对AOP的配置提供了自动化配置解决方案`spring-boot-starter-aop`使开发者能够更加敏捷地使用AOP，如下是对AOP的简单运用，首先在Web项目中添加依赖：
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+```
+
+接下来创建一个需要测试方法运行的所需时间的类：
+
+```java
+package com.example.myboot;
+
+import org.springframework.stereotype.Service;
+import java.util.Date;
+
+@Service
+public class UserService {
+    public  String getUserById(){
+        System.out.println("正在获取用户信息"+new Date().toString());
+        return  "user id is : ...";
+    }
+    public  void  deleteUserById(){
+        System.out.println("正在删除用户ID..."+new Date().toString());
+    }
+}
+```
+
+接下里创建切面：
+
+```
+package com.example.myboot;
+
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.After;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Before;
+import org.aspectj.lang.annotation.Pointcut;
+import org.springframework.stereotype.Component;
+
+import java.util.Date;
+
+@Component
+@Aspect
+public class LogAspect {
+    private long spendTime;
+
+public class LogAspect {
+    private long spendTime;
+
+    @Pointcut("execution(* com.example.myboot.UserService.*(..))")
+    public  void pc1(){
+        System.out.println("------");
+    }
+    @Before(value = "pc1()")
+    public void before(JoinPoint jp) {
+        String name = jp.getSignature().getName();
+        spendTime = new Date().getTime();
+        System.out.println(name +"方法开始执行...");
+    }
+    @After(value = "pc1()")
+    public  void after(JoinPoint jp) {
+        String name = jp.getSignature().getName();
+        long time = new Date().getTime()-spendTime;
+        System.out.println(name +"方法执行结束，用时："+ time+"ms");
+    }
+
+    @AfterReturning(value = "pc1()",returning = "result")
+    public void afterReturning(JoinPoint jp,Object result){
+        String name = jp.getSignature().getName();
+        System.out.println(name+"方法的返回值为:"+result);
+    }
+    @AfterThrowing(value = "pc1()",throwing = "e")
+    public void afterThrowing(JoinPoint jp,Exception e){
+        String name = jp.getSignature().getName();
+        System.out.println(name+"方法出现了异常："+e);
+    }
+    @Around("pc1()")
+    public Object around(ProceedingJoinPoint pjp)throws Throwable{
+        return pjp.proceed();
+    }
+}
+}
+```
+
+这里需要说明一下：
+
+pc1()类方法，后面的注解value必须的是这个值，否者项目报错。
+
+`@Pointcut("execution(* com.example.myboot.UserService.*(..))")` 是切入点定义。execution 中第一个`*` 代表任意方法返回值，第二个`*` 代表该包下的任意方法，`（..）` 代表的是方法的参数。整个语句联合起来就是说明在`com.example.myboot.UserService`包下的所有方法都是切入点。注意这个名称是我的项目包名，使用自己的包路径需要参考包路径。
+
+`@Before`注解表示在目标方法执行前执行，可以通过JoinPoint类型来获取方法的名称与参数等信息。
+
+`@After`注解表示在目标方法执行结束后执行。
+
+`@AfterReturning`是运行含有返回值的方法之后所执行的方法，在方法中定义了参数Object result就表示可以是任意的返回值，即可以返回任意的具有返回值的方法，如果只想指定特定返回值的方法，只需要把result的参数类型定为Object即可。
+
+`@afterThrowing`是捕获抛出错误的方法之后执行的方法，同样的Exception e指定所有的抛出类型。
+
+`@Around`表示环绕通知，可以实现前面所有的方法通过调用proceed()方法来实现目标方法继续执行。开发者可以在这里面修改目标方法的执行参数，返回值等，并且可以在这里面处理异常。
+
+配置完成后，使用控制器调用测试类中方法：
+
+```java
+    @Autowired
+    UserService userService;
+    @GetMapping("/getUserById")
+    public  String getUserById(){
+        return userService.getUserById();
+    }
+    @GetMapping("/deleteUserById")
+    public  void deleteUserById(){
+       userService.deleteUserById();
+    }
+```
 
 
+执行控制器方法即可看到方法的执行信息。
 
 
+<b id="a8"></b>
 
+### :fallen_leaf:自定义 ###
 
+:arrow_double_up:[返回目录](#t)
 
+在Spring Boot中，有许多的自定义设置，比如默认开始界面，标题等。下面说下修改这些默认配置。
 
+**自定义起始界面**
 
+自定义起始界面是在Spring Boot项目启动前首先回去静态文件夹寻找index.html作为网站首页文件，若查找不到则会去查找动态的index作为界面
 
+修改自定义起始界面：如果是静态Html界面的话，直接在static目录下添加文件即可，动态的话则需要在templates文件下创建一个index.html（使用模板创建）然后在控制器中添加一个/index的请求方法：
 
+```java
+    @GetMapping("/index")
+    public String index(){
+        return  "index";
+```
 
+最后在直接访问端口即可`http://localhost:86/`
 
+**自定义favicon**
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+favicon.ico是浏览器选项卡左上角的图标，可以放在静态资源路径下或者类路径下，静态资源路径下的favicon.ico优先级高于类路径下的favicon.ico。
+可以使用[在线转换网站](https:/jinaconvert.com/cn/convert-to-ico.php)将一张普通图片转为.ico图片，转换成功后，将文件重命名为favicon.ico，然后复制到resources/static目录下，如图:
 
 
 

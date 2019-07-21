@@ -884,7 +884,11 @@ pc1()类方法，后面的注解value必须的是这个值，否者项目报错�
 **自定义favicon**
 
 favicon.ico是浏览器选项卡左上角的图标，可以放在静态资源路径下或者类路径下，静态资源路径下的favicon.ico优先级高于类路径下的favicon.ico。
-可以使用[在线转换网站](https:/jinaconvert.com/cn/convert-to-ico.php)将一张普通图片转为.ico图片，转换成功后，将文件重命名为favicon.ico，然后复制到resources/static目录下，如图:
+可以使用[在线转换网站](https://jinaconvert.com/convert-to-ico.php)将一张普通图片转为.ico图片，转换成功后，将文件重命名为favicon.ico，然后复制到resources/static目录下，如图:
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a12.png)
+
+这样就替换掉了原有的标题
 
 
 

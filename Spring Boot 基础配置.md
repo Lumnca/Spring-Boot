@@ -6,6 +6,8 @@
 
 :arrow_double_down:[@SpringBootApplication](#a2)
 
+:arrow_double_down:[Http请求注解](#a6)
+
 :arrow_double_down:[Web容器配置](#a3)
 
 :arrow_double_down:[Properties配置](#a4)
@@ -79,6 +81,54 @@ spring-boot-starter-parent虽然方便，但是更多的时候使用自己的par
 @ComponentScan完成包扫描，也是Spring中的功能，由于@ComponentScan注解默认扫描的类都位于当前类所在包的下面，因此建议在实际项目开发中把项目启动类放在根包中。也就是启动注解类所在的类。
 
 虽然项目的启动类也包含@Configuration注解，但是可以一个新的类专门用来配置Bean，这样便于配置管理，这个类只需要加上@Configuration注解即可。
+
+<b id="a6"></b>
+
+### :bowling:Http请求注解 ###
+
+:arrow_double_up: [返回目录](#t)
+
+在以前的MVC中请求注解有 @RequestMapping注解，该注解也可以在Spring Boot中使用，如下：
+
+```java
+    @RequestMapping(path = "/req",method = RequestMethod.GET)
+    public String req(){
+        return "Hello !";
+    }
+```
+
+像上面就表示路径/req就会映射到req方法，请求方式为GET，如果想要添加占位符参数，可以如下：
+
+```java
+    @RequestMapping(path = "/req/{name}",method = RequestMethod.GET)
+    public String req(@PathVariable("name") String name){
+        return "Hello "+name;
+    }
+```
+其中注解@PathVariable是使参数能够映射到name上。
+
+在Spring Boot中请求中使用较多就是@GetMapping其格式可以如下：
+
+```java
+    @GetMapping(value = "infor")
+    
+    @GetMapping( "infor")
+    
+    @GetMapping("/infor")
+```
+
+上述三种都可以使用/infor直接访问。如果想要含有参数，可以如下配置：
+
+```java
+    @GetMapping("/req")
+    public String req(String name){
+        return "Hello "+name;
+    }
+```
+
+这里的参数不是占位符参数：`http://localhost:86/req?name=lumnca`
+
+当然如果你的请求为POST则 为@PostMapping()，用法与GET一样，更多方法请求使用@XXXMapping() 其中XXX为请求类型。
 
 <b id="a3"></b>
 
@@ -441,6 +491,7 @@ public class start {
     }
 }
 ```
+
 
 
 

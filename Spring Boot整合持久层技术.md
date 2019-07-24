@@ -216,8 +216,158 @@ public class index {
 
 :arrow_double_up:[返回目录](#t)
 
+MyBatis是一款优秀的持久层框架，原名叫作iBaits，2010年由ApacheSoftwareFoundation迁移到Google Code并改名为MyBatis，2013年又迁移到GitHub上。MyBatis 支持定制化SQL、存储过程以及高级映射。MyBatis几乎避免了所有的JDBC代码手动设置参数以及获取结果集。在传统的SSM框架整合中，使用MyBatis需要大量的XML配置，而在SpringBot中，MyBatis官方提供了一套自动化配置方案，可以做到MyBatis开箱即用。具体使用步骤如下。
 
+添加依赖：
 
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>1.3.2</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.39</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.1.9</version>
+        </dependency>
+```
 
+数据表与实体类和前面一样这里不做简述，下一步创建数据库访问层：
 
+在某个包下创建UserMapper接口，其方法这里只加入三个
 
+```java
+package mapper;
+
+import org.apache.ibatis.annotations.Mapper;
+import run.User;
+
+import java.util.List;
+
+@Mapper
+public interface UserMapper {
+    int add(User user);
+    User getUser(String name);
+    List<User> getAll();
+}
+```
+
+这里在接口处声明@Mapper说明这是一个Mapper，该注解表明这个接口是MyBatis中的Mapper，这种方式需要在每个接口上添加注解，也可以在运行类上添加注解：
+
+```java
+@SpringBootApplication   
+@MapperScan("mapper")  //扫描mapper包下所有的接口作为Mapper
+public class start {
+    public static  void main(String[] args){
+        SpringApplication.run(start.class,args);
+    }
+}
+
+```
+
+接下来就是创建与之对应的UserMapper.xml文件：
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="mapper.UserMapper">     ------  Mapper类所在的包
+  
+<insert id="add" parameterType="run.User">    -------接口方法add实现配置  参数实体类对应run包的User类
+    INSERT INTO tab(name,tell,sex) VALUES(#{ name },#{ tell },#{ sex })   -----#name 对应实体类的相应的属性
+</insert>
+
+<select id="getUser" parameterType="String" resultType="run.User">   ------返回类型为run包下的User类
+    SELECT * FROM tab WHERE name = #{ name}
+ </select>
+
+<select id="getAll" resultType="run.User">
+    SELECT * FROM tab
+</select>
+</mapper>
+```
+
+上面就是针对该接口的方法实现xml配置文件，`#{}`可以代替接口中的参数，实体类中的属性可以直接通过`#{实体类属性名}`获取
+
+接下来实现接口服务类：
+
+```java
+@Service
+public class ListDao implements UserMapper{
+
+    @Autowired
+    UserMapper db;
+    @Override
+    public int add(User user) {
+        return db.add(user);
+    }
+
+    @Override
+    public User getUser(String name) {
+        return db.getUser(name);
+    }
+
+    @Override
+    public List<User> getAll() {
+        return db.getAll();
+    }
+}
+```
+
+最后在控制器中访问：
+
+```java
+@RestController
+public class index {
+
+    @Autowired
+    ListDao db;
+    @GetMapping("/add")
+    public int add(){
+        return  db.add(new User("Hey","s","152"));
+    }
+    @GetMapping("/getUser")
+    public User getUser(){
+        return db.getUser("lumnca");
+    }
+    @GetMapping("/getAll")
+    public List<User> getAll(){
+        return db.getAll();
+    }
+}
+```
+
+最后配置xml文件位置，由于xml文件都是在静态文件夹resource中扫描的，所以配置pom.xml位置到该文件中完成扫描：
+
+```xml
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/java</directory>
+                <includes>
+                    <include>**/*.xml</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+    </build>
+```
+
+像这样访问控制器路径，访问成功完成配置。我的文件夹如下：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a14.png)
+
+当然像这样使用xml比较麻烦，可以直接使用注解完成整合配置。

@@ -568,3 +568,92 @@ public class index {
 
 简单起见，这里没有添加Service层，而是直接将JdbcTemplate注入到了Controller中。在Controller中注入两个不同的JdbcTemplate有两种方式：一种是使用@Resource注解，并指明name属性，即按name进行装配，此时会根据实例名查找相应的实例注入；另一种是使用@Autowired注解结合@Qualifier 注解，效果等同于使用@Resource注解。
 
+
+**使用MyBatis多数据源**
+
+MyBatis多数据源配置比上面的复杂一点，这里也简单介绍一下，添加MyBatis依赖和数据池配置类不需要改变，第一步创建MyBatis配置：
+
+```java
+@Configuration
+@MapperScan(value = "run.mapper2",sqlSessionFactoryRef = "sqlSessionFactoryBean2")
+public class MyBatisConfigTwo {
+    @Autowired
+    @Qualifier("dsTwo")
+    DataSource dsTwo;
+    @Bean
+    SqlSessionFactory sqlSessionFactoryBean2()throws Exception{
+        SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+        factoryBean.setDataSource(dsTwo);
+        return  factoryBean.getObject();
+    }
+    @Bean
+    SqlSessionTemplate sqlSessionTemplate2()throws  Exception{
+        return new SqlSessionTemplate(sqlSessionFactoryBean2());
+    }
+}
+---------------------------------------数据源2配置--------------------------------------------
+@Configuration
+@MapperScan(value = "run.mapper1",sqlSessionFactoryRef = "sqlSessionFactoryBean1")
+public class MyBatisConfigOne {
+    @Autowired
+    @Qualifier("dsOne")
+    DataSource dsOne;
+    @Bean
+    SqlSessionFactory sqlSessionFactoryBean1()throws Exception{
+        SqlSessionFactoryBean factoryBean = new SqlSessionFactoryBean();
+        factoryBean.setDataSource(dsOne);
+        return factoryBean.getObject();
+    }
+    @Bean
+    SqlSessionTemplate sqlSessionTemplate()throws Exception{
+        return new SqlSessionTemplate(sqlSessionFactoryBean1());
+    }
+}
+
+```
+
+* 在@MapperScan注解中指定Mapper接口所在的位置，同时指定SqlSessionFactory的实例名，则该位置下的Mapper 将使用SqlSessionFactory实例。
+
+* 提供SqlSessionFactory的实例，直接创建出来，同时将DataSource的实例设置给SqlSessionFactory，这里创建的SqlSesionFactory 实例也就是@MapperScan
+
+* 注解中sqlSessionFactoryRef参数指定的实例。提供一个SqlSessionTemplate 实例。这是一个线程安全类，主要用来管理MyBatis 中的SqlSession 操作。
+
+当配置完成后创建Mapper和与之对应的xml文件：
+
+```java
+@Service
+@Mapper
+public interface Mapper1 {
+    List<Stu> getAll();
+}
+
+xml文件
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="run.mapper1.Mapper1">
+    <select id="getAll" resultType="run.Stu">
+    SELECT * FROM Studnet
+</select>
+</mapper>
+```
+
+Mapper2配置一样，这里不列出，最后在控制器中引用：
+
+```java
+@RestController
+public class index {
+    @Autowired
+    Mapper1 mapper1;
+    @Autowired
+    Mapper2 mapper2;
+    @GetMapping("/get")
+    public List<Stu> get(){
+        List<Stu> s = mapper1.getAll();
+        s.addAll(mapper2.getAll());
+        return s;
+    }
+}
+```
+运行看到结果这说明配置成功

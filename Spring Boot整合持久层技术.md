@@ -12,6 +12,8 @@
 
 :arrow_double_up:[返回目录](#t)
 
+整合数据库有很多方式，在这里我们只介绍JdbeTemplate和MyBatis。其余的可以自行上网查找资料。
+
 JdbeTemplate是Spring提供的一套JDBC模板框架，利用AOP技术来解决直接使用JDBC时大量重复代码的问题。Jdbc Template虽然没有MyBatis那么灵活，但是比直接使用JDBC要方便很多。Spring Boot中对Jdbc Template的使用提供了自动化配置类Jdbc TemplateAutoConfiguration。
 
 在 TemplateAutoConfiguration类中，说明了当classpath下存在DataSource和JdbcTemplate并且DataSource只有一个实例时，自动化配置才会生效，若开发者没有提供JdbcOperations，则Spring Boot会自动向容器中注入一个JdbcTemplate 。由此可以看出，开发者想使用jdbcTemplate，只需要提供JdbcTemplate和DataSource的依赖即可。具体操作如下：
@@ -370,4 +372,41 @@ public class index {
 
 ![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a14.png)
 
-当然像这样使用xml比较麻烦，可以直接使用注解完成整合配置。
+当然像这样使用xml比较麻烦，可以直接使用注解完成整合配置。删除前面所有有关xml的配置，在接口中作如下修改：
+
+```java
+@Mapper
+public interface UserMapper {
+    @Insert("INSERT INTO tab(name,tell,sex) VALUES(#{ name },#{ tell },#{ sex })")
+    int add(User user);
+
+    @Select("SELECT * FROM tab WHERE name = #{ name}")
+    User getUser(String name);
+
+    @Select("SELECT * FROM tab")
+    List<User> getAll();
+}
+```
+
+将接口要对应的sql语句作为注解添加到方法前面，就完成了整合。由于我们的实体类属性与数据库列属性一致，所以我们这里并没有配置参数，如果不一致，比如我们的实体类name改为了namex那么就需要做参数映射处理：
+
+```java
+@Mapper
+public interface UserMapper {
+    @Insert("INSERT INTO tab(name,tell,sex) VALUES(#{ namex },#{ tell },#{ sex })")
+    @Options(useGeneratedKeys = true,keyProperty = "namex",keyColumn = "name")   //keyProperty实体类属性名 ，keyColumn数据库属性名
+    int add(User user);
+
+    @Select("SELECT * FROM tab WHERE name = #{ namex}")
+    @Results({
+            @Result(column = "name",property = "namex")            //返回结果实体类，column数据库列段名，property实体类名
+    })
+    User getUser(String name);
+
+    @Select("SELECT * FROM tab")
+    @Results({
+            @Result(column = "name",property = "namex")
+    })
+    List<User> getAll();
+}
+```

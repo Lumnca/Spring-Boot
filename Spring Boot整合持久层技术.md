@@ -6,6 +6,8 @@
 
 :arrow_down:[整合MyBatis](#a2)
 
+:arrow_down:[多数据源](#a3)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:整合JdbcTemplate ###
@@ -410,3 +412,159 @@ public interface UserMapper {
     List<User> getAll();
 }
 ```
+
+<b id="a3"></b>
+
+### :fallen_leaf:多数据源 ###
+
+:arrow_double_up:[返回目录](#t)
+
+所谓多数据源就是项目采用了不同的数据库源。一般来说说，采用MyCat等分布式数据库中间件是比较好的解决方案，这样就可以把数据库分离，分库分表，备份等操作交给中间件去做，Java代码只需注重业务即可。
+
+JdbcTemplate多数据源配置，因为一个JdbcTemplate对应一个DateSource，开发者只需要手动提供多个DataSource，再手动配置JdbcTemplate即可。具体步骤如下：
+
+
+首先配置两个同的数据库表：
+
+```sql
+
+---库1
+create database stu;
+use Stu;
+ Create table Studnet(
+	StuID int primary key,
+    StuName varchar(50) not null,
+    StuPwd varchar(50) not null
+);
+
+ALTER TABLE  Studnet MODIFY StuName VARCHAR(50) CHARACTER SET utf8 not null;
+
+insert into Studnet values('20170101','刘大头','123456');
+
+
+----库2
+
+create database stu2;
+use Stu2;
+ 
+Create table Studnet(
+	StuID int primary key,
+    StuName varchar(50) not null,
+    StuPwd varchar(50) not null
+);
+
+
+ALTER TABLE  Studnet MODIFY StuName VARCHAR(50) CHARACTER SET utf8 not null;
+
+insert into Studnet values('20170102','周大头','123456');
+```
+
+添加依赖：
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.39</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid-spring-boot-starter</artifactId>
+            <version>1.1.9</version>
+        </dependency>
+```
+
+
+然后添加原有依赖后，配置数据连接池：
+
+```java
+#数据库源1
+spring.datasource.one.url=jdbc:mysql://127.0.0.1/stu?characterEncoding=utf8&useSSL=true
+spring.datasource.one.username=root
+spring.datasource.one.password=xxx
+spring.datasource.one.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.one.driver-class-name=com.mysql.jdbc.Driver
+
+#数据库源2
+spring.datasource.two.url=jdbc:mysql://127.0.0.1/stu2?characterEncoding=utf8&useSSL=true
+spring.datasource.two.username=root
+spring.datasource.two.password=xxx
+spring.datasource.two.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.two.driver-class-name=com.mysql.jdbc.Driver
+```
+
+接下来就是配置数据源，新建一个DataSourceConfig类，根据数据池配置生成两个数据源：
+
+```java
+@Configuration
+public class DataSourceConfig {
+    @Bean
+    @ConfigurationProperties("spring.datasource.one")
+    DataSource dsOne(){
+        return DruidDataSourceBuilder.create().build();
+    }
+    @Bean
+    @ConfigurationProperties("spring.datasource.two")
+    DataSource dsTwo(){
+        return DruidDataSourceBuilder.create().build();
+    }
+}
+```
+
+其中DataSourceConfig提供了两个数据源：dsOne与dsTwo，默认方法名即实例名。 @ConfigurationProperties注解表明使用不同前缀文件来创建不同的DataSource实例。
+
+下一步是配置JdbcTemplate:
+
+新建一个JdbcTemplateConfig配置类：
+
+```java
+@Configuration
+public class JdbcTemplateConfig {
+    @Bean
+    JdbcTemplate jdbcTemplateOne(@Qualifier("dsOne")DataSource dataSource){
+        return new JdbcTemplate(dataSource);
+    }
+    @Bean
+    JdbcTemplate jdbcTemplateTwo(@Qualifier("dsTwo")DataSource dataSource){
+        return new JdbcTemplate(dataSource);
+    }
+}
+```
+
+由于引用了多个数据源，所需这个配置类需要手动配置，不能像前面那样直接使用，这样就生成了两个数据源，JdbcTemplateConfig 中提供了两个方法，每个方法都生成了一个JdbcTemplate实例，由于有两个实例，需要通过方法名来查找，@Qualifier注解表示查找不同名称的DataSource实例注入进来。
+
+最后一步使用，这里就不配置服务层，直接使用：
+
+```java
+@RestController
+public class index {
+    @Resource(name = "jdbcTemplateOne")
+    JdbcTemplate jdbcTemplateOne;
+    @Autowired
+    @Qualifier("jdbcTemplateTwo")
+    JdbcTemplate jdbcTemplateTwo;
+    @GetMapping("/getAll")
+    public List<Stu> getAll(){
+            List<Stu> stu1 = jdbcTemplateOne.query("Select * from  Studnet",
+                    new BeanPropertyRowMapper<>(Stu.class));
+
+            List<Stu> stu2 = jdbcTemplateTwo.query("Select * from  Studnet",
+                    new BeanPropertyRowMapper<>(Stu.class));
+
+            stu1.addAll(stu2);
+
+            return  stu1;
+    }
+}
+```
+
+简单起见，这里没有添加Service层，而是直接将JdbcTemplate注入到了Controller中。在Controller中注入两个不同的JdbcTemplate有两种方式：一种是使用@Resource注解，并指明name属性，即按name进行装配，此时会根据实例名查找相应的实例注入；另一种是使用@Autowired注解结合@Qualifier 注解，效果等同于使用@Resource注解。
+

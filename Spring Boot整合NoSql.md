@@ -133,7 +133,8 @@ SuingRecdisTemplate 和RedisTemplate 都是通过opsForValue、opsForZSt或者op
 
 常用方法列表如下：
 
-Key类型操作
+**Key类型操作**
+
 |接口	|描述|
 |:--:|:---|
 |ValueOperations|操作Redis String（或者Value）类型数据|
@@ -144,7 +145,8 @@ Key类型操作
 |HyperLogLogOperations|操作Redis HyperLogLog类型数据，比如：pfadd，pfcount，...|
 |GeoOperations|操作Redis Geospatial类型数据，比如：GEOADD,GEORADIUS,..)|
 
-Key绑定操作
+**Key绑定操作**
+
 |接口	|描述|
 |:--:|:---|
 |BoundValueOperations|Redis字符串（或值）键绑定操作|

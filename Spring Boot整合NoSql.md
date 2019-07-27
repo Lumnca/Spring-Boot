@@ -416,3 +416,5 @@ make instal1
 再获取：`http://47.106.254.86:100/get` 如下显示
 
 ![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a17.png)
+
+注意的是这里使用的端口是Nginx的端口，不是我们配置的1551和1552，由于是负载均衡，如果响应端口一样，再次刷新即可、

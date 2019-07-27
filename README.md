@@ -11,3 +11,5 @@
 :fallen_leaf:[Spring Boot整合持久层技术](https://github.com/Lumnca/Spring-Boot/blob/master/Spring%20Boot%E6%95%B4%E5%90%88%E6%8C%81%E4%B9%85%E5%B1%82%E6%8A%80%E6%9C%AF.md)
 
 :fallen_leaf:[Spring Boot整合NoSQL](https://github.com/Lumnca/Spring-Boot/blob/master/Spring%20Boot%E6%95%B4%E5%90%88NoSql.md)
+
+:fallen_leaf:[构建RESTful服务](https://github.com/Lumnca/Spring-Boot/blob/master/%E6%9E%84%E5%BB%BARESTful%E6%9C%8D%E5%8A%A1.md)

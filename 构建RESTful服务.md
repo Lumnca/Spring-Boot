@@ -51,3 +51,90 @@ REST（Representational State Transfer）是一种Web软件架构风格，它是
         </dependency>
 ```
 
+项目配置：
+
+```
+spring.datasource.url=jdbc:mysql://47.106.254.86/ex?characterEncoding=utf8&useSSL=true
+spring.datasource.username=lumnca
+spring.datasource.password=chuan868
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database=mysql
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL57Dialect
+spring.jpa.show-sql=true
+```
+
+实体类创建：
+
+```
+package run;
+
+import javax.persistence.*;
+import java.io.Serializable;
+
+@Entity(name = "tab")
+public class User implements Serializable {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "name")
+    private String name;
+    @Column(name = "tell")
+    private String tell;
+    @Column(name = "sex")
+    private String sex;
+
+    public  User(){
+
+    }
+    public  User(String n,String s,String t){
+        name = n;
+        sex = s;
+        tell = t;
+    }
+
+    public String getSex() {
+        return sex;
+    }
+
+    public void setTell(String tell) {
+        this.tell = tell;
+    }
+
+    public String getTell() {
+        return tell;
+    }
+
+    public void setSex(String sex) {
+        this.sex = sex;
+    }
+
+    public void setNamex(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+
+```
+
+
+创建接口：
+
+```java
+public interface UserReqository extends JpaRepository<User,String> {
+}
+```
+
+这里主要第二个泛型参数，这个是你的主属性的类型值，由于上面的是STring类型，所以这里也一样。这样不需要你做过多的配置就可以完成了。接下来需要输入url访问就行。
+
+默认是以你的实体类名+s访问全局数据：
+
+`http://localhost:8080/users`
+
+由于只能使用GET方法所以只能够访问。加上主属性可以看到单个实例：`http://localhost:8080/users/lumnca`
+
+

@@ -6,6 +6,8 @@
 
 :arrow_down:[整合MyBatis](#a2)
 
+:arrow_down:[整合JPA](#a4)
+
 :arrow_down:[多数据源](#a3)
 
 <b id="a1"></b>
@@ -412,6 +414,184 @@ public interface UserMapper {
     List<User> getAll();
 }
 ```
+
+<b id="a4"></b>
+
+### :fallen_leaf:整合JPA ###
+
+:arrow_double_up:[返回目录](#t)
+
+JPA（Java Persistence API）和Spring Data是两个范畴的概念。
+
+作为一名JavaEE工程师，基本都有听说过Hibermate框架。Hibernate是一个ORM框架，而PA则是一种ORM规范，JPA和Hibermate的关系就像JDBC与JDBC驱动的关系，即JPA制定了ORM规范，而Hibernate是这些规范的实现（事实上，是先有Hibermate后有JPA，JPA规范的起草者也是Hibermate的作者），因此从功能上来说，JPA相当于Hibermate的一个子集。
+
+Sping Data 是Spring的一个子项目，致力于简化数据库访问，通过规范的方法名称来分析开发者的意图，进而减少数据库访问层的代码量。Spring Data不仅支持关系型数据库，也支持非关系型数据库。Spring DataJPA可以有效简化关系型数据库访问代码。
+Spring Boot 整合Spring Data JPA的步骤如下。
+
+添加依赖
+
+```xml
+    <dependencies>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-rest</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.39</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.1.9</version>
+        </dependency>
+    </dependencies>
+```
+
+数据库配置：
+
+```
+spring.datasource.url=jdbc:mysql://47.106.254.86/ex?characterEncoding=utf8&useSSL=true
+spring.datasource.username=lumnca
+spring.datasource.password=chuan868
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database=mysql
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL57Dialect
+spring.jpa.show-sql=true
+```
+
+常里的配置信息主要分为两大类，
+
+* 第1-5行是数据库基本信息配置，第6~9行是JPA相关配置中：。
+* 第5行本示路否在控制合打印入执行过程生成的SQL.
+* 第6行表示JPA对应的数据库是MySQL，
+* 第7行表示年项目启动时根据实体关更新数据库中的表。
+* 第8行则表示使用的数据库方言是MySOLS7Diakt.
+
+接下来创建实体类：
+
+```java
+@Entity(name = "tab")
+public class User implements Serializable {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "name")
+    private String name;
+    @Column(name = "tell")
+    private String tell;
+    @Column(name = "sex")
+    private String sex;
+
+    public  User(){
+
+    }
+    public  User(String n,String s,String t){
+        name = n;
+        sex = s;
+        tell = t;
+    }
+
+    public String getSex() {
+        return sex;
+    }
+
+    public void setTell(String tell) {
+        this.tell = tell;
+    }
+
+    public String getTell() {
+        return tell;
+    }
+
+    public void setSex(String sex) {
+        this.sex = sex;
+    }
+
+    public void setNamex(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+
+代码解释：
+
+`@Eintiy注解表示该类是一个实体类，在项目启动时会根据该类自动生成一张表，表的名称即@Entity注解中name的值，如果不配置name，默认表名为类名。`
+
+`所有的实体类都要有主键，@Id注解表示该属性是一个主键，@GeneratedValue 注解表示主键自动生成，strategy则表示主键的生成策略。`
+
+`默认情况下，生成的表中字段的名称就是实体类中属性的名称，通过@Column注解可以定制生成的字段的属性，name表示该属性对应的数据表中字段的名称，nulable表示该字段非空。`
+
+`@Transient注解表示在生成数据库中的表时，该属性被忽略，即不生成对应的字段。`
+
+创建UserDao接口：
+
+```java
+public interface UserDao extends JpaRepository<User,Integer> {
+
+}
+```
+
+内置方法可以自行添加，参考网上说明也行，由于后面介绍RESTful，这里加单说下。
+
+创建服务层：
+
+```java
+@Service
+public class UserServer {
+    @Autowired
+    UserDao userDao;
+    public void addUser(User user){
+        userDao.save(user);
+    }
+    public Page<User> getUserByPage(Pageable pageable){
+        return userDao.findAll(pageable);
+    }
+}
+```
+
+这里也是简单列举,最后控制器访问：
+
+```java
+@RestController
+public class index {
+    @Autowired
+    UserServer us;
+    @GetMapping("/add")
+    public  int add(){
+        us.addUser(new User("Really","man","15155126"));
+        return 1;
+    }
+    @GetMapping("get")
+    public  void get(){
+        PageRequest pageRequest = PageRequest.of(1,2);
+        Page<User> page = us.getUserByPage(pageRequest);
+        System.out.println("总页数:"+page.getTotalPages());
+        System.out.println("总记录数:"+page.getTotalElements());
+        System.out.println("查询结果:"+page.getContent());
+        System.out.println("当前页数:"+page.getNumber()+1);
+    }
+}
+```
+
+运行对应的路由即可。
 
 <b id="a3"></b>
 

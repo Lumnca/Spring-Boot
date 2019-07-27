@@ -4,7 +4,9 @@
 
 :arrow_down:[整合Spring Boot](#a1)
 
-:arrow_down:[Redis集群整合Spring Boot](#a1)
+:arrow_down:[Redis集群整合Spring Boot](#a2)
+
+:arrow_down:[Session共享](#a3)
 
 <b id="a1"></b>
 
@@ -228,5 +230,16 @@ rvm install 2.6.3
 ```
 gem install redis
 ```
+
+文档丢失？
+
+***
+
+
+<b id="a3"></b>
+
+### :fallen_leaf:Session共享 ###
+
+:arrow_double_up:[返回目录](#t)
 
 

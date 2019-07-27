@@ -242,4 +242,177 @@ gem install redis
 
 :arrow_double_up:[返回目录](#t)
 
+正常情况下，HtpSession是通过Servlet容器创建并进行管理的，创建成功之后都是保存在内存中。如果开发者需要对项目进行横向扩展搭建集群，那么可以利用一些硬件或者软件工具来做负载均衡，此时，来自同一用户的HTTP请求就有可能被分发到不同的实例上去，如何保证各个实例之间Session的同步就成为一个必须解决的问题。Spring Boot提供了自动化的Session共享配置，它结合Redis可以非常方便地解决这个问题。使用Redis解决Session共享问题的原理非常简单，就是把原本存储在不同服务器上的Session拿出来放在一个独立的服务器上.
 
+![](https://www.runoob.com/wp-content/uploads/2018/08/1535725078-1224-20160201162405944-676557632.jpg)
+
+当一个请求到达Nginx服务器后，首先进行请求分发，假设请求被real serverl处理了，real server1处理请求时，无论是存储Session还是读取Session，都去操作Session服务器而不是操作自身内存中的Session，其他real server在处理请求时也是如此，这样就可以实现Session共享了。
+
+**Session共享配置**
+
+添加依赖，最后面加的是项目打包的的组件
+```xml
+    <dependencies>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.lettuce</groupId>
+                    <artifactId>lettuce-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+    </dependencies>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+```
+
+在application配置文件中添加Redis的配置：
+
+```xml
+spring.http.encoding.force=true
+spring.http.encoding.charset=UTF-8
+spring.http.encoding.enabled=true
+server.tomcat.uri-encoding=UTF-8
+server.port=8080
+spring.redis.database=0
+spring.redis.host=47.106.254.86
+spring.redis.port=6379
+spring.redis.password=xxxx
+spring.redis.jedis.pool.max-active=8
+spring.redis.jedis.pool.max-wait=-1ms
+spring.redis.jedis.pool.max-idle=8
+spring.redis.jedis.pool.min-idle=0
+```
+
+创建一个控制器来完成端口显示：
+
+```java
+@RestController
+public class index {
+    @Value("${server.port}")
+    String port;
+    @GetMapping("/save")
+    public  String saveName(String name, HttpSession session){
+        session.setAttribute("name",name);
+        return "响应你的端口是：" +port;
+    }
+    @GetMapping("/get")
+    public String getName(HttpSession session){
+        return "响应你的端口是：" +port+":"+ session.getAttribute("name").toString();
+    }
+}
+```
+
+这里注入了项目启动文件配置的server.port参数由于我们使用的是本地编译，所以这个端口号会不变，我们这里使用服务端创建，将项目打包为jar上传到你的CentOS上，在与包名相应的目录下执行java程序命令：
+
+```
+nohup java -jar test-1.0-SNAPSHOT.jar --server.port=1551 &
+nohup java -jar test-1.0-SNAPSHOT.jar --server.port=1552 &
+```
+
+nohup 表示不挂断执行，&表示程序在后台运行。--server.port表示设置端口，一个为1551，一个为1552 。由于运行还需要java环境配置，请自行配置好服务运行环境。对于java程序在linux上运行，将在后面介绍。查看进程是否运行：
+
+```shell
+netstat -lnp|grep 1551
+netstat -lnp|grep 1552  端口号
+```
+
+结束进程可以使用`kill -9 +pid`结束进程，如下：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a15.png)
+
+其中第二个是正常现象。接下就是我们的服务器配置了。
+
+**Nginx负载均衡**
+
+我们使用Nginx进行负载均衡。首先先安装Nginx，安装步骤如下：
+
+```
+wget https://nginx.org/download/nginx-1.14.0.tar.gz 
+tar-zxvf nginx-1.14.0.tar.gz
+```
+
+然后进入解压目录中执行编译安装，代码如下：
+```
+cd nginx-1.14.0
+./configure
+make
+make instal1
+```
+安装成功后，找到Nginx安装目录，执行sbin目录下的nginx文件启动nginx，命令如下：
+
+`/usr/1ocal/nginx/sbin/nginx Nginx`
+
+启动成功后，默认端口是80，可以在物理机直接访问，如图6-19所示。如果端口占用，在配置文件中修改端口：
+
+`vim  /usr/local/nginx/conf/nginx.conf`
+
+修改内容如下：
+
+```
+ upstream sang.com{
+        server 47.106.254.86:1551 weight=1;    #---服务器1
+        server 47.106.254.86:1552 weight=1;    #---服务器2
+       } 
+    server {
+        listen      100;            #--监听端口
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+
+        location / {
+            root   html;
+            index  index.html index.htm;
+            proxy_pass http://sang.com;  #--请求转发到上面的服务群sang.com
+        }
+
+        #error_page  404              /404.html;
+
+        # redirect server error pages to the static page /50x.html
+        #
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+```
+
+主要修改如上代码，配置完成后或者修改后都需要重新启动服务：
+
+```
+/usr/local/nginx/sbin/nginx -s reload
+```
+
+接下来就可以测试运行了，在服务器上输入：`http://47.106.254.86:100/save?name=lumnca`得到如下显示：
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a16.png)
+
+再获取：`http://47.106.254.86:100/get` 如下显示
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a17.png)

@@ -4,7 +4,7 @@
 
 :arrow_down:[整合Spring Boot](#a1)
 
-
+:arrow_down:[Redis集群整合Spring Boot](#a1)
 
 <b id="a1"></b>
 
@@ -186,5 +186,47 @@ SuingRecdisTemplate 和RedisTemplate 都是通过opsForValue、opsForZSt或者op
 
 与基本方法一致，从头和尾添加，从头和尾添加，通过index返回索引值。更多方法自行查看接口。Set类型与List类型一样，这里不做解释。
 
+<b id="a2"></b>
+
+### :fallen_leaf:Redis集群整合Spring Boot ###
+
+:arrow_double_up:[返回目录](#t)
+
+**（1）集群原理**
+
+在Redis集群中，所有的Redis节点彼此互联，节点内部使用二进制协议优化传输速度和带宽。当一个节点挂掉后，集群中超过半数的节点检测失效时才认为该节点已失效。不同于Tomcat集群需要使用反向代理服务器，Redis集群中的任意节点都可以直接和Java客户端连接。Redis集群上的数据分配则是采用哈希槽（HASHSLOT），Redis集群中内置了16384个哈希槽，当有数据需要存储时，Redis会首先使用CRC16算法对key进行计算，将计算获得的结果对16384取余，这样每一个key都会对应一个取值在0~16383之间的哈希槽，Redis则根据这个余数将该条数据存储到对应的Redis节点上，开发者可根据每个Redis实例的性能来调整每个Redis实例上哈希槽的分布范围。
+
+**（2）集群规划**
+
+本案例在同一台服务器上用不同的端口表示不同的Redis服务器（伪分布式集群）。
+
+`主节点：47.106.254.86：8001，47.106.254.86：8002，47.106.254.86：8003。`
+
+`从节点：47.106.254.86：8004，47.106.254.86：8005，47.106.254.86：8006。`
+
+**（3）集群配置**
+
+`Redis 集群管理工具redis-trib.rb依赖Ruby环境，首先需要安装Ruby环境，由于CentOS 7yum库中默认的Ruby版本较低，因此建议采用如下步骤进行安装。
+首先安装RVM，RVM是一个命令行工具，可以提供一个便捷的多版本Ruby环境的管理和切换，安装命令如下：`
+
+```
+sudo yum install ruby  
+gpg --keyserver hkp://keys.gnupg.net --recv-keys 409B6B1796C275462A1703113804BB82D39DC0E3 7D2BAF1CF37B13E2069D6956105BD0E739499BDB
+curl -sSL https://get.rvm.io | bash -s stable
+source /etc/profile.d/rvm.sh
+```
+
+然后就是列出安装表,安装一个比较稳定的版本：
+
+```
+rvm list known
+rvm install 2.6.3
+```
+
+最后安装Redis依赖：
+
+```
+gem install redis
+```
 
 

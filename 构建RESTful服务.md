@@ -224,7 +224,80 @@ public interface UserReqository extends JpaRepository<User,Integer>, JpaSpecific
 
 默认的查询方法支持分页查询，排序查询以及按照id查询，如果开发者想要某个属性查询，主要在接口中定义相关方法暴露即可，如下：
 
+```java
+@RepositoryRestResource(path = "abc",collectionResourceRel = "us",itemResourceRel = "ues")
+public interface UserReqository extends JpaRepository<User,Integer>, JpaSpecificationExecutor {
+    @RestResource(path = "names",rel = "name")
+    List<User> findAllByNameContains(@Param("names")String names);
+    @RestResource(path = "name",rel = "name")
+    User findByNameEquals(@Param("name")String name);
+}
 ```
+
+其中本身在接口中添加方法就会使得多一条访问路径第一个方法就会映射为：`http://localhost:8080/abc/search/findAllByNameContains?name=张三`使用了 @RestResource注解可以改变方法名，其中path是改变路径名称，rel是对应后接参数，所以终方式也就成为了：`http://localhost:8080/abc/search/names?name=张三`也可以使用`http://localhost:8080/abc/search`来查看有哪几种对应方式。
+
+**:four:隐藏方法**
+
+默认情况下。凡是继承了Repository接口的类都会被暴露出来，即开发者可以执行执行基本增删改查的方法，就像前面一样，能够随意的使用这些方法。如果不想暴露相关操作，做以下配置即可：
+
+```java
+@RepositoryRestResource(path = "abc",collectionResourceRel = "us",itemResourceRel = "ues",exported = false)
+public interface UserReqository extends JpaRepository<User,Integer>, JpaSpecificationExecutor {
+    @RestResource(path = "names",rel = "name")
+    List<User> findAllByNameContains(@Param("names")String names);
+    @RestResource(path = "name",rel = "name")
+    User findByNameEquals(@Param("name")String name);
+
+}
 ```
+
+添加了exported = false后，原有的接口方法全部失效，包括内部方法。如果只想某一个不被使用，那么可以在方法上配置，比如对删除进行限制：
+
+```java
+@RepositoryRestResource(path = "abc",collectionResourceRel = "us",itemResourceRel = "ues")
+public interface UserReqository extends JpaRepository<User,Integer>, JpaSpecificationExecutor {
+    @RestResource(path = "names",rel = "name")
+    List<User> findAllByNameContains(@Param("names")String names);
+    @RestResource(path = "name",rel = "name")
+    User findByNameEquals(@Param("name")String name);
+
+    @RestResource(exported = false)
+    void deleteById(Integer id);
+}
+
+
+```
+
+**:five:其他CORS**
+
+配置CORS只需要在接口前面加上@CrossOrigin注解即可，这样接口中所有方法都支持跨域，如果只想某一个跨域，可以添加到某个方法上面去。
+
+开发者还可以在application中添加一些配置：
+
+```
+#每页默认记录数，默认值为20
+spring.data.rest.default-page-size=2
+#分页查询页码参数名，默认值为page
+spring.data.rest.page-param-name=page
+#分页查询记录数参数名，默认值为size
+spring.data.rest.1imit-param-name=size
+#分页查询排序参数名，默认值为sort
+spring.data.rest.sort-param-name=sort
+#base-path 表示给所有请求路径都加上前缀
+spring.data.rest.base-path=/api
+#添加成功时是否返回添加内容
+spring.data.rest.return-body-on-create=true
+#更新成功时是否返回更新内容
+spring.data.rest.return-body-on-update=true
+``
+
+
+
+
+
+
+
+
+
 
 

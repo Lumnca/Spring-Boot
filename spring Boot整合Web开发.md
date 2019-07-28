@@ -592,7 +592,7 @@ public class cors {
 }
 ```
 
-上面代码中@CrossOrigin注解代表跨域配置，其中value是表示支持的域，这里表示来自`http://localhost:86`端口的请求运行跨域到本服务中，maxAge代表请求的有效时间，，这个属性默认是1800秒即30分钟。allowedHeaders代表运行的请求头，`*` 代表所有的请求头都被允许。这种方式是一种细粒的配置，可以控制到每个方法上，当然可以使用全局配置,在设置的全局配置文件中添加如下方法：
+上面代码中@CrossOrigin注解代表跨域配置，其中value是表示支持的域，这里表示来自`http://localhost:86`端口的请求运行跨域到本服务中，maxAge代表请求的有效时间，，这个属性默认是1800秒即30分钟。allowedHeaders代表运行的请求头，`*` 代表所有的请求头都被允许。这种方式是一种细粒的配置，如果允许全部可以使用`*`，可以控制到每个方法上，当然可以使用全局配置,在设置的全局配置文件中添加如下方法：
 
 ```java
     public void  addCorsMappings(CorsRegistry registry)

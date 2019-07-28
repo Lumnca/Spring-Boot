@@ -66,48 +66,60 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL57Dialect
 spring.jpa.show-sql=true
 ```
 
+
+数据库脚本：
+
+```sql
+create table tab1(
+	id int auto_increment primary key,
+    name varchar(50) not null,
+    age int
+);
+
+ALTER TABLE tab1 MODIFY  name VARCHAR(251) CHARACTER SET utf8 not null;
+
+insert into tab1 values(1,'张三',25);
+```
+
 实体类创建：
 
 ```
-package run;
-
-import javax.persistence.*;
-import java.io.Serializable;
-
-@Entity(name = "tab")
+@Entity(name = "tab1")
 public class User implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
     @Column(name = "name")
     private String name;
-    @Column(name = "tell")
-    private String tell;
-    @Column(name = "sex")
-    private String sex;
+    private int age;
 
     public  User(){
 
     }
-    public  User(String n,String s,String t){
-        name = n;
-        sex = s;
-        tell = t;
+    public  User(int _id,String _name,int _age){
+        name = _name;
+        id = _id;
+        age =_age;
     }
 
-    public String getSex() {
-        return sex;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public void setTell(String tell) {
-        this.tell = tell;
+    public void setAge(int age) {
+        this.age = age;
     }
 
-    public String getTell() {
-        return tell;
+    public int getAge() {
+        return age;
     }
 
-    public void setSex(String sex) {
-        this.sex = sex;
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Integer getId() {
+        return id;
     }
 
     public void setNamex(String name) {
@@ -121,6 +133,7 @@ public class User implements Serializable {
 
 ```
 
+实体配置类需要注意的是，字段的属性，主键由于是int自增型，因此可以使用GenerationType.IDENTITY自增序列。或者使用GenerationType.AUTO，如果为字符串则不能这样使用注解，后面向大家说明字符串的使用。
 
 创建接口：
 
@@ -129,12 +142,23 @@ public interface UserReqository extends JpaRepository<User,String> {
 }
 ```
 
-这里主要第二个泛型参数，这个是你的主属性的类型值，由于上面的是STring类型，所以这里也一样。这样不需要你做过多的配置就可以完成了。接下来需要输入url访问就行。
+这里主要第二个泛型参数，这个是你的主属性的类型值，由于上面的是类型，所以这里也一样。这样不需要你做过多的配置就可以完成了。接下来需要输入url访问就行。
 
 默认是以你的实体类名+s访问全局数据：
 
 `http://localhost:8080/users`
 
-由于只能使用GET方法所以只能够访问。加上主属性可以看到单个实例：`http://localhost:8080/users/lumnca`
+由于只能使用GET方法所以只能够访问。加上主属性可以看到单个实例：`http://localhost:8080/users/1`
+
+为了能够做出示例，这里我们使用POSTman工具来演示效果：
 
 
+**添加数据**
+
+想数据库中添加一个数据可以使用POST请求，然后在请求中添加实体类的JOSN字符串，如下所示：
+
+```
+
+```
+
+如上只要返回了对于的数据JSON，则说明请求成功！

@@ -14,4 +14,4 @@
 
 :fallen_leaf:[构建RESTful服务](https://github.com/Lumnca/Spring-Boot/blob/master/%E6%9E%84%E5%BB%BARESTful%E6%9C%8D%E5%8A%A1.md)
 
-![热部署与单元测试](https://github.com/Lumnca/Spring-Boot/blob/master/%E5%BC%80%E5%8F%91%E8%80%85%E5%B7%A5%E5%85%B7%E4%B8%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95.md)
+:fallen_leaf:[热部署与单元测试](https://github.com/Lumnca/Spring-Boot/blob/master/%E5%BC%80%E5%8F%91%E8%80%85%E5%B7%A5%E5%85%B7%E4%B8%8E%E5%8D%95%E5%85%83%E6%B5%8B%E8%AF%95.md)

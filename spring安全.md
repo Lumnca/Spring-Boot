@@ -399,9 +399,12 @@ protected void configure（AuthenticationManagerBuilder auth）throws Exception{
 }
 @Configuration
 @order(1)
-public static class Adminsecurityconfig extends websecurityconfigurerAdaptert eoverride protected void configure(Httpsecurity http) throws Exception{
+public static class Adminsecurityconfig extends websecurityconfigurerAdaptert{
+@override
+protected void configure(Httpsecurity http) throws Exception{
         http. antMatcher("/admin/**").authorizeRequests()
         . anyRequest().hasRole("ADMIN");
+     }
 }
 @Configuration 
 public static class OtherSecurityConfig extends WebSecurityconfigurerAdaptert {

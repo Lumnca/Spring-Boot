@@ -426,3 +426,81 @@ protected void configure (HttpSecurity http) throws Exception {
 
 配置多个HtpSecurity 时，MultilltpsSecurityConfig不需要继承WebsecurityConfigurerAdapter，在MultiHtpSecurity Config中创建静态内部类继承WebsecurityCconfigurerAdapter即可，静态内部类上添加@Configuration 注解和@Order 注解，@Order注解表示该配置的优先级，数字越小优先级越大，未加@Order注解的配置优先级最小。
 第14-22行配置表示该类主要用来处理`“amin/**”`模式的URL，其他的URL将在第23-37行配置的HtpSecurity中进行处理。
+
+
+**安全加密**
+
+使用加密可以保证信息安全，如下可以对密码进行加密
+
+```java
+ @Override
+    protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+        //哈希加密，10次迭代密匙
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(10);
+        //加密密匙
+        String passwd = encoder.encode("123");
+        System.out.println(passwd);
+
+        auth.inMemoryAuthentication()
+                .withUser("admin").password(passwd).roles("ADMIN","USER")
+                .and()
+                .withUser("sang").password(passwd).roles("USER");
+    }
+```
+
+注意以上只是说明，可以提前将加密后的文本填写到其中，每次生成的密匙都会不一样，但每次的密匙都能够转换为123
+
+**方法安全**
+
+前面都是通过url来授权，我们也可以通过注解来灵活的配置方法安全，使用@EnableGlobalMethodSecurity注解开启基于方法的安全注解
+
+```java
+@EnableGlobalMethodSecurity(prePostEnabled = true,securedEnabled = true)
+public class WebSecurityConfig {
+}
+```
+
+prePostEnabled会解锁@PreAuthorize和@PostAuthorize注解，PreAuthoriz在方法执行前进行验证，PostAuthorize在方法执行后进行验证。
+
+securedEnabled会解锁@Secured注解。
+
+如下为一个服务类添加验证：
+
+```java
+@Service
+public class MethodService {
+    @Secured("ROLE_ADMIN")
+    public  String admin(){
+        return  "ADMIN";
+    }
+    @PreAuthorize("hasAnyRole('USER','ADMIN')")
+    public String ors(){
+        return "USER OR ADMIN";
+    }
+    @PostAuthorize("hasRole('USER') and  hasRole('ADMIN')")
+    public String alls(){
+        return "USER AND ADMIN";
+    }
+}
+```
+
+验证权限解释与上面介绍的一致，最后在控制器调用即可：
+
+```java
+    @Autowired
+    MethodService ms;
+    @GetMapping("/or")
+    public String or(){
+        return ms.ors();
+    }
+    @GetMapping("/all")
+    public String all(){
+        return ms.alls();
+    }
+    @GetMapping("/admin")
+    public  String admin(){
+        return  ms.admin();
+    }
+```
+
+登录后相应对应权限即可。

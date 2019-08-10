@@ -66,6 +66,7 @@ spring.security.user.roles=admin
 当然我们也可以自定义类继承自WebSecurityConfigureAdapter，进而实现对Spring Security更多的自定义配置，例如基于内存的认证，配置如下：
 
 ```java
+@Configuration
 public class MySecurityConfig extends WebSecurityConfigurerAdapter {
     @Bean
     PasswordEncoder passwordEncoder(){
@@ -88,6 +89,96 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 虽然现在可以实现认证功能，但是受保护的资源是默认，而且不能根据实际情况进行角色管理，如果要实现这些功能，就需要重写WebSecurityConfigurerAdapter 类中另一个方法，如下：
 
 ```java
+@Configuration
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        return NoOpPasswordEncoder.getInstance();
+    }
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+        auth.inMemoryAuthentication()
+                .withUser("admin").password("123").roles("ADMIN","USER")
+                .and()
+                .withUser("sang").password("123").roles("USER");
+    }
+    @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .antMatchers("/system/**")                            //system/路径限制
+                .hasRole("ADMIN")                                     //需要ADMIN角色权限
+                .antMatchers("/index/**")
+                .access("hasAnyRole('ADMIN','USER')")                 //含一种角色即可
+                .antMatchers("/set")
+                .access("hasRole('USER') and  hasRole('ADMIN')")      //必须同时含有两个角色
+                .and()
+                .formLogin()
+                .loginProcessingUrl("/login")                         //开启接口/login表单验证
+                .permitAll()
+                .and()
+                .csrf()                    //关闭csrf               
+                .disable();     
+    }
+}
+```
+
+解释代码如上注释，接下来添加控制器路径：
+
+```java
+@RestController
+public class index {
+    @GetMapping("/index/hello")
+    public String hello1(){
+        return  "Hello User";
+    }
+    @GetMapping("/system/hello")
+    public  String hello2(){
+        return "Hello Admin";
+    }
+    @GetMapping("/hello")
+    public String hello(){
+        return "Hello Tourist";
+    }
+    @GetMapping("/set")
+    public String hello3(){
+        return "Hello Admin and user";
+    }
+}
+```
+
+这下就可以实现不同的角色实现不同的访问，其中没有被阻止的访问的资源可以直接访问，如果想全部都需要登录访问，可以添加如下代码：
+
+```java
+ @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .antMatchers("/system/**")
+                .hasRole("ADMIN")
+                .antMatchers("/index/**")
+                .access("hasAnyRole('ADMIN','USER')")
+                .antMatchers("/set")
+                .access("hasRole('USER') and  hasRole('ADMIN')")
+                .anyRequest()             //其他访问也需要登录
+                .authenticated()
+                .and()
+                .formLogin()
+                .loginProcessingUrl("/login")
+                .permitAll()
+                .and()
+                .csrf()
+                .disable();
+    }
+```
+
+**登录表单详细配置**
+
+迄今为止，登录表单一直使用Spring Security提供的页面，登录成功后也是默认的页面跳转，但是前后端分离正在成为企业级应用开发的主流，在前后端分离方式中，前后端的数据交互通过JSON进行，这时登录界面不再是界面跳转，而是一段json提示。要实现这些功能，就继续上面的配置：
+
+```java
 
 ```
+
+
+
+
 

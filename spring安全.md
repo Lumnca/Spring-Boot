@@ -376,5 +376,50 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
+在url栏中使用/logout接口即可退出。
+
+**多个HttpSecurity**
+
+如果业务比较复杂，开发者也可以配置多个HttpSecurity，实现对WebSecurityConfigurerAdapter的多次扩展，代码如下：
 
 
+```java
+@Configuration
+public class MultinttpSecurityconfigt{
+@Bean
+PasswordEncoder passwordEncoder（）{
+        return NoOpPasswordEncoder.getInstance（）；
+}
+@Autowired
+protected void configure（AuthenticationManagerBuilder auth）throws Exception{
+        auth.inMemoryAuthentication（）
+        . withuser("admin").password("123").roles("ADMIN","USER")
+        . and()
+        . withUser("sang").password("123").roles("USER"); 
+}
+@Configuration
+@order(1)
+public static class Adminsecurityconfig extends websecurityconfigurerAdaptert eoverride protected void configure(Httpsecurity http) throws Exception{
+        http. antMatcher("/admin/**").authorizeRequests()
+        . anyRequest().hasRole("ADMIN");
+}
+@Configuration 
+public static class OtherSecurityConfig extends WebSecurityconfigurerAdaptert {
+@override 
+protected void configure (HttpSecurity http) throws Exception {
+        http. authorizeRequests()
+        . anyRequest(). authenticated()
+        . and()
+        . formLogin()
+        .1oginProcessingUr1("/1ogin")
+        . permitA11()
+        . and()
+        . csrf()
+        . disable();
+       }
+    }
+}
+```
+
+配置多个HtpSecurity 时，MultilltpsSecurityConfig不需要继承WebsecurityConfigurerAdapter，在MultiHtpSecurity Config中创建静态内部类继承WebsecurityCconfigurerAdapter即可，静态内部类上添加@Configuration 注解和@Order 注解，@Order注解表示该配置的优先级，数字越小优先级越大，未加@Order注解的配置优先级最小。
+第14-22行配置表示该类主要用来处理`“amin/**”`模式的URL，其他的URL将在第23-37行配置的HtpSecurity中进行处理。

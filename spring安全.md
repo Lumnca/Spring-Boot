@@ -175,10 +175,206 @@ public class index {
 迄今为止，登录表单一直使用Spring Security提供的页面，登录成功后也是默认的页面跳转，但是前后端分离正在成为企业级应用开发的主流，在前后端分离方式中，前后端的数据交互通过JSON进行，这时登录界面不再是界面跳转，而是一段json提示。要实现这些功能，就继续上面的配置：
 
 ```java
+@Configuration
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        return NoOpPasswordEncoder.getInstance();
+    }
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+        auth.inMemoryAuthentication()
+                .withUser("admin").password("123").roles("ADMIN","USER")
+                .and()
+                .withUser("sang").password("123").roles("USER");
+    }
+    @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .antMatchers("/system/**")
+                .hasRole("ADMIN")
+                .antMatchers("/index/**")
+                .access("hasAnyRole('ADMIN','USER')")
+                .antMatchers("/set")
+                .access("hasRole('USER') and  hasRole('ADMIN')")
+                .and()
+                .formLogin()
+                .loginPage("/login_page")
+                .loginProcessingUrl("/login")
+                .usernameParameter("name")
+                .passwordParameter("passwd")
+                //成功处理
+                .successHandler(new AuthenticationSuccessHandler() {
+                    @Override
+                    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response
+                    , Authentication auth)throws IOException{
+                        Object principal = auth.getPrincipal();
+                        response.setContentType("application/json;charset=utf-8");
+                        PrintWriter out = response.getWriter();
+                        response.setStatus(200);
+                        Map<String,Object> map = new HashMap<>();
+                        map.put("status",200);
+                        map.put("msg",principal);
+                        ObjectMapper om = new ObjectMapper();
+                        out.write(om.writeValueAsString(map));
+                        out.flush();
+                        out.close();
+                    }
+                    //登录失败处理
+                }).failureHandler(new AuthenticationFailureHandler(){
+            @Override
+            public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException e) throws IOException, ServletException {
+                response.setContentType("application/json;charset=utf-8");
+                PrintWriter out = response.getWriter();
+                response.setStatus(401);
+                Map<String,Object> map = new HashMap<>();
+                map.put("status",401);
+                if(e instanceof LockedException){
+                    map.put("msg","账户被锁定，登录失败");
+                }
+                else  if(e instanceof BadCredentialsException){
+                    map.put("msg","用户名或密码错误，登录失败");
+                }
+                else  if(e instanceof DisabledException){
+                    map.put("msg","账户被禁用，登录失败");
+                }
+                else  if(e instanceof AccountExpiredException){
+                    map.put("msg","账户已过期，登录失败");
+                }
+                else  if(e instanceof CredentialsExpiredException){
+                    map.put("msg","密码已过期，登录失败");
+                }
+                else {
+                    map.put("msg","未知错误，登录失败，请联系管理人员");
+                }
+                ObjectMapper om = new ObjectMapper();
+                out.write(om.writeValueAsString(map));
+                out.flush();
+                out.close();
+            }
+        }).permitAll().and().csrf().disable();  //必须含有
+    }
+}
+```
 
+像这样就可以实现JSON转递，你可以在login_page提供一个login接口的表单，如下：
+
+```html
+<form action="/login" method="post">
+    <label>账号</label>
+    <input type="text" placeholder="输入账号" name="name"><br>
+    <label>密码</label>
+    <input type="password" name="passwd"><br>
+    <input type="submit" value="登录">
+</form>
 ```
 
 
+让后登录成功后就会返回JOSN字符串。如果失败也会有相应的错误提示。
+
+**登录注销配置**
+
+同样的添加配置：
+
+```java
+@Configuration
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        return NoOpPasswordEncoder.getInstance();
+    }
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+        auth.inMemoryAuthentication()
+                .withUser("admin").password("123").roles("ADMIN","USER")
+                .and()
+                .withUser("sang").password("123").roles("USER");
+    }
+    @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .antMatchers("/system/**")
+                .hasRole("ADMIN")
+                .antMatchers("/index/**")
+                .access("hasAnyRole('ADMIN','USER')")
+                .antMatchers("/set")
+                .access("hasRole('USER') and  hasRole('ADMIN')")
+                .and()
+                .formLogin()
+                .loginPage("/login_page")
+                .loginProcessingUrl("/login")
+                .usernameParameter("name")
+                .passwordParameter("passwd")
+                .successHandler(new AuthenticationSuccessHandler() {
+                    @Override
+                    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response
+                    , Authentication auth)throws IOException{
+                        Object principal = auth.getPrincipal();
+                        response.setContentType("application/json;charset=utf-8");
+                        PrintWriter out = response.getWriter();
+                        response.setStatus(200);
+                        Map<String,Object> map = new HashMap<>();
+                        map.put("status",200);
+                        map.put("msg",principal);
+                        ObjectMapper om = new ObjectMapper();
+                        out.write(om.writeValueAsString(map));
+                        out.flush();
+                        out.close();
+                    }
+                }).failureHandler(new AuthenticationFailureHandler(){
+            @Override
+            public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response, AuthenticationException e) throws IOException, ServletException {
+                response.setContentType("application/json;charset=utf-8");
+                PrintWriter out = response.getWriter();
+                response.setStatus(401);
+                Map<String,Object> map = new HashMap<>();
+                map.put("status",401);
+                if(e instanceof LockedException){
+                    map.put("msg","账户被锁定，登录失败");
+                }
+                else  if(e instanceof BadCredentialsException){
+                    map.put("msg","用户名或密码错误，登录失败");
+                }
+                else  if(e instanceof DisabledException){
+                    map.put("msg","账户被禁用，登录失败");
+                }
+                else  if(e instanceof AccountExpiredException){
+                    map.put("msg","账户已过期，登录失败");
+                }
+                else  if(e instanceof CredentialsExpiredException){
+                    map.put("msg","密码已过期，登录失败");
+                }
+                else {
+                    map.put("msg","未知错误，登录失败，请联系管理人员");
+                }
+                ObjectMapper om = new ObjectMapper();
+                out.write(om.writeValueAsString(map));
+                out.flush();
+                out.close();
+            }
+        }).and()
+                .logout()
+                .logoutUrl("/logout")             //注销接口
+                .clearAuthentication(true)        //清除认证信息
+                .invalidateHttpSession(true)      //是否使Session失效
+                .addLogoutHandler(new LogoutHandler() {        //配置登出处理器
+                    @Override
+                    public void logout(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication) {
+
+                    }
+                }).logoutSuccessHandler(new LogoutSuccessHandler() {
+            @Override
+            //处理器
+            public void onLogoutSuccess(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, Authentication authentication) throws IOException, ServletException {
+            //重定向，也可以进行其他操作
+                httpServletResponse.sendRedirect("login_page");
+            }
+        }).permitAll()
+                .and().csrf().disable()
+        ;
+    }
+}
+```
 
 
 

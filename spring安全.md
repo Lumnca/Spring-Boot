@@ -520,14 +520,14 @@ public class MethodService {
 create database Authentication;
 use Authentication;
 create table user(
-id int(11) primary key,
-username varchar(32) not null,
-password varchar(255) not null,
-enabled tinyint(1),
-locked tinyint(1)
+_id int(11) primary key,
+_username varchar(32) not null,
+_password varchar(255) not null,
+_enabled tinyint(1),
+_locked tinyint(1)
 );
 
-ALTER TABLE  user MODIFY username VARCHAR(255) CHARACTER SET utf8 not null;
+ALTER TABLE  user MODIFY _username VARCHAR(255) CHARACTER SET utf8 not null;
 
 create table role(
 id int(11) primary key,
@@ -568,9 +568,305 @@ insert into user_role values(4,3,3);
 添加依赖。这里使用MyBatis：
 
 ```xml
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>1.3.2</version>
+        </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>5.1.39</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>druid</artifactId>
+            <version>1.1.9</version>
+        </dependency>
 
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+    </dependencies>
 ```
 
+配置数据库：
 
+```java
+spring.datasource.url=jdbc:mysql://47.106.254.86/Authentication?characterEncoding=utf8&useSSL=true
+spring.datasource.username=lumnca
+spring.datasource.password=xxx
+spring.datasource.type=com.alibaba.druid.pool.DruidDataSource
+spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+```
 
+创建与表一样的实体类：
+
+```java
+package run;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+public class User implements UserDetails {
+    private Integer _id;
+    private  String _username;
+    private String _password;
+    private Boolean _enabled;
+    private Boolean _locked;
+    private List<Role> _roles;
+    public  User(){
+
+    }
+    public Boolean get_enabled() {
+        return _enabled;
+    }
+
+    public Boolean get_locked() {
+        return _locked;
+    }
+
+    public Integer get_id() {
+        return _id;
+    }
+
+    public List<Role> get_roles() {
+        return _roles;
+    }
+
+    public String get_password() {
+        return _password;
+    }
+
+    public String get_username() {
+        return _username;
+    }
+
+    public void set_enabled(Boolean _enabled) {
+        this._enabled = _enabled;
+    }
+
+    public void set_id(Integer _id) {
+        this._id = _id;
+    }
+
+    public void set_locked(Boolean _locked) {
+        this._locked = _locked;
+    }
+
+    public void set_password(String _password) {
+        this._password = _password;
+    }
+
+    public void set_roles(List<Role> _roles) {
+        this._roles = _roles;
+    }
+
+    public void set_username(String _username) {
+        this._username = _username;
+    }
+        
+    //获取当前角色所具有的所有角色的信息
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+        for (Role role:_roles
+        ) {
+            authorities.add(new SimpleGrantedAuthority(role.getName()));
+        }
+        return authorities;
+    }
+    //获取当前用户的密码
+    @Override
+    public String getPassword() {
+        return _password;
+    }
+    //获取当前用户的用户名
+    @Override
+    public String getUsername() {
+        return _username;
+    }
+    //用户信息是否过期
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+    //用户是否被锁定
+    @Override
+    public boolean isAccountNonLocked() {
+        return !_locked;
+    }
+    //密码是否过期
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+    //用户是否可用
+    @Override
+    public boolean isEnabled() {
+        return  _enable;
+    }
+
+}
+
+//--------------role-----------------------------------
+package run;
+
+public class Role {
+    private Integer id;
+    private  String name;
+    private  String namezh;
+    public Role(){
+
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public String getNamezh() {
+        return namezh;
+    }
+
+    public void setNamezh(String namezh) {
+        this.namezh = namezh;
+    }
+}
+```
+
+这里注意的是属性的字段要与表中字段一样，不然就需要通过注解来一一对应。这里为了简单，所以直接和数据表一样的字段信息。对于User中继承了UserDetails类重写的方法含义如上注释所示。可以根据自己的实际需求来修改上面这7个重写的方法。默认情况下不需要我们自己进行密码对比，因为getPassword方法会自动获取对应的密码与用户输入的密码进行比对，不匹配会抛出BadCredentialsExpire异常，isAccountNonExpired返回值如果为false会抛出AccountNonExpiredExpire异常,所以可以设置这两个返回值来做不同的处理，由于数据库里面没有这两个字段信息，所以返回值都设置为true。可根据需要添加字段也行。
+
+创建MyBatis的UserMapper：
+
+```java
+@Mapper
+public interface UserMapper {
+    @Select("select * from user where _username = #{username}")
+    User  loadUserByUsername(String username);
+    @Select(" SELECT * FROM role r, user_role ur where r.id = ur.rid and ur.uid = #{id}")
+    List<Role> getUserRolesByUid(Integer id);
+}
+```
+
+创建Dao层：
+
+```java
+@Service
+public class UserDao implements UserMapper {
+    @Autowired
+    UserMapper userMapper;
+    @Override
+    public List<Role> getUserRolesByUid(Integer id) {
+        return userMapper.getUserRolesByUid(id);
+    }
+
+    @Override
+    public User loadUserByUsername(String username) {
+        return userMapper.loadUserByUsername(username);
+    }
+}
+```
+
+创建使用层：
+
+```java
+@Service
+public class UserServer implements UserDetailsService {
+    @Autowired
+    UserDao userDao;
+    @Override
+    public UserDetails loadUserByUsername(String s) throws UsernameNotFoundException {
+        User user = userDao.loadUserByUsername(s);
+        if(user==null){
+            throw  new UsernameNotFoundException("账户不存在");
+        }
+        user.set_roles(userDao.getUserRolesByUid(user.get_id()));
+        return user;
+    }
+}
+```
+
+这里实现了UserDetailsService 接口，并实现了接口中的loadUserByUsername方法，该方法的参数就是用户登录时输入的用户名，通过用户名去数据库中查询数据，不存在就抛出异常，存在对比密码信息再返回数据。
+
+最后添加权限配置信息：
+
+```java
+@Configuration
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+    @Autowired
+    UserServer userServer;
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        PasswordEncoder instance = NoOpPasswordEncoder.getInstance();
+        return instance;
+    }
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+        auth.userDetailsService(userServer);
+    }
+    @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .antMatchers("/admin/**")                            
+                .hasRole("admin")                                     
+                .antMatchers("/db/**")
+                .hasRole("dba")
+                .antMatchers("/user/**")
+                .hasRole("user")
+                .and()
+                .formLogin()
+                .loginProcessingUrl("/login")                     
+                .permitAll()
+                .and()
+                .csrf()                 
+                .disable();
+    }
+}
+```
+
+再添加相应的控制器信息即可：
+
+```java
+@RestController
+public class index {
+    @GetMapping("/admin/index")
+    public  String admin(){
+        return "Hello Admin";
+    }
+    @GetMapping("/dba/index")
+    public  String dba(){
+        return "Hello Dba";
+    }
+    @GetMapping("/user/index")
+    public  String user(){
+        return "Hello User";
+    }
+}
+```
+
+点击运行测试正确，说明配置成功。
 

@@ -870,3 +870,18 @@ public class index {
 
 点击运行测试正确，说明配置成功。
 
+如果想数据库的密码是加密的，可以使用加密后的密码，再改动配置文件即可：
+
+```sql
+--123的一个加密密码
+update user set _password = '$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwPyQgvLb4a2' where _id = 3;
+```
+
+修改配置类：
+
+```java
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        return new BCryptPasswordEncoder(10);
+    }
+```

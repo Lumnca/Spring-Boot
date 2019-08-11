@@ -4,7 +4,7 @@
 
 :arrow_double_down:[Spring Security的基本配置](#a1)
 
-:arrow_double_down:[Redis缓存](#a2)
+:arrow_double_down:[基于数据库的验证](#a2)
 
 
 
@@ -504,3 +504,73 @@ public class MethodService {
 ```
 
 登录后相应对应权限即可。
+
+
+<b id="a2"></b>
+
+### :bowling:基于数据库的验证 ###
+
+:arrow_double_up: [返回目录](#t)
+
+前面介绍的验证都是内存中，在实际中用户的基本信息应该存在数据库中，所以使用数据库验证来获取数据验证比较常用，下面介绍如何使用数据库验证：
+
+**设计数据表**
+
+```sql
+create database Authentication;
+use Authentication;
+create table user(
+id int(11) primary key,
+username varchar(32) not null,
+password varchar(255) not null,
+enabled tinyint(1),
+locked tinyint(1)
+);
+
+ALTER TABLE  user MODIFY username VARCHAR(255) CHARACTER SET utf8 not null;
+
+create table role(
+id int(11) primary key,
+name varchar(32) not null,
+nameZh varchar(32)
+);
+
+ALTER TABLE role MODIFY name VARCHAR(32) CHARACTER SET utf8 not null;
+ALTER TABLE role MODIFY nameZh VARCHAR(32) CHARACTER SET utf8 not null;
+
+create table user_role(
+id int(11) primary key,
+uid int(11) not null,
+rid int(11) not null
+);
+```
+
+接下来往数据库中添加信息：
+
+```sql
+insert into user values(1,'root','123',1,0);
+insert into user values(2,'admin','123',1,0);
+insert into user values(3,'sang','123',1,0);
+
+insert into role values(1,'ROLE_dba','数据库管理员');
+insert into role values(2,'ROLE_admin','系统管理员');
+insert into role values(3,'ROLE_user','用户');
+
+
+insert into user_role values(1,1,1);
+insert into user_role values(2,1,2);
+insert into user_role values(3,2,2);
+insert into user_role values(4,3,3);
+```
+
+注意得是角色名前面有一个ROLE的前缀，这是为了后面使用，建议加上。
+
+添加依赖。这里使用MyBatis：
+
+```xml
+
+```
+
+
+
+

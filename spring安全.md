@@ -6,7 +6,7 @@
 
 :arrow_double_down:[基于数据库的验证](#a2)
 
-
+:arrow_double_down:[高级配置](#a3)
 
 
 <b id="a1"></b>
@@ -885,3 +885,46 @@ update user set _password = '$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwP
         return new BCryptPasswordEncoder(10);
     }
 ```
+
+<b id="a3"></b>
+
+### :bowling:高级配置 ###
+
+:arrow_double_up: [返回目录](#t)
+
+**角色继承**
+
+上面我们定义了3种角色，按道理权限最高的dba也应该具有user和admin的权限，所以需要角色继承，如下：
+
+```java
+    @Bean
+    RoleHierarchy roleHierarchy(){
+        RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();
+        String hierarchy = "ROLE_dba > ROLE_admin  ROLE_admin > ROLE_user";
+        roleHierarchy.setHierarchy(hierarchy);
+        return  roleHierarchy;
+    }
+```
+
+在配置类中添加如上配置，其中` "ROLE_dba > ROLE_admin  ROLE_admin > ROLE_user";`是权限继承规则。不要使用连等。
+
+**动态配置权限**
+
+动态配置权限需要在数据库中添加一张url模式表与一张模式对应权限表，然后实现自定义的FilterlnvocationSecurityMetadataSource，再修改配置即可，这里不做
+演示了，有兴趣可以自行了解。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -8,6 +8,7 @@
 
 :arrow_double_down:[高级配置](#a3)
 
+:arrow_double_down:[OAuth2](#a4)
 
 <b id="a1"></b>
 
@@ -913,18 +914,268 @@ update user set _password = '$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwP
 动态配置权限需要在数据库中添加一张url模式表与一张模式对应权限表，然后实现自定义的FilterlnvocationSecurityMetadataSource，再修改配置即可，这里不做
 演示了，有兴趣可以自行了解。
 
+<b id="a4"></b>
+
+### :bowling:OAuth2 ###
+
+:arrow_double_up: [返回目录](#t)
+
+OAuth（开放授权）是一个开放标准，允许用户授权第三方移动应用访问他们存储在另外的服务提供者上的信息，而不需要将用户名和密码提供给第三方移动应用或分享他们数据的所有内容，OAuth2.0是OAuth协议的延续版本，但不向后兼容OAuth 1.0即完全废止了OAuth1.0。
+
+要了解OAuth2，需要先了解OAuth3中几个基本的角色：
+
+* Resource Owner：资源所有者。即用户。
+* Client：客户端（第三方应用）。如云冲印。
+* HTTP service：HTTP服务提供商，简称服务提供商。如上文提到的github或者Google。
+* User Agent：用户代理。本文中就是指浏览器。
+* Authorization server：授权（认证）服务器。即服务提供商专门用来处理认证的服务器。
+* Resource server：资源服务器，即服务提供商存放用户生成的资源的服务器。它与认证服务器，可以是同一台服务器，也可以是不同的服务器。
+* Access Token：访问令牌。使用合法的访问令牌获取受保护的资源。
+
+授权流程：
+
+![](https://image-static.segmentfault.com/317/086/3170867390-5843d768b41e4_articlex)
+
+如上如示，
+
+* 步骤1：`客户端向用户请求授权`
+
+* 步骤2：`同意授权后。返回一个授权许可凭证给客户端`
+
+* 步骤3：`客户端拿着凭证向授权服务器申请令牌`
+
+* 步骤4：`授权服务器确认信息无误后，发送令牌给客户端`
+
+* 步骤5：`客户端拿着令牌去资源服务器访问资源`
+
+* 步骤6：`资源服务器验证令牌无误后开发资源`
 
 
+**授权模式**
+
+OAuth 2.0 规定了四种获得令牌的流程。你可以选择最适合自己的那一种，向第三方应用颁发令牌。下面就是这四种授权方式。
+
+```
+授权码（authorization-code）
+隐藏式（implicit）
+密码式（password）
+客户端凭证（client credentials）
+```
+
+`授权码（authorization code）方式，指的是第三方应用先申请一个授权码，然后再用该码获取令牌。`
+
+这种方式是最常用的流程，安全性也最高，它适用于那些有后端的 Web 应用。授权码通过前端传送，令牌则是储存在后端，而且所有与资源服务器的通信都在后端完成。这样的前后端分离，可以避免令牌泄漏。
+
+`第二种方式：隐藏式`
+
+有些 Web 应用是纯前端应用，没有后端。这时就不能用上面的方式了，必须将令牌储存在前端。RFC 6749 就规定了第二种方式，允许直接向前端颁发令牌。这种方式没有授权码这个中间步骤，所以称为（授权码）"隐藏式"（implicit）。
+
+`第三种方式：密码式`
+
+如果你高度信任某个应用，RFC 6749 也允许用户把用户名和密码，直接告诉该应用。该应用就使用你的密码，申请令牌，这种方式称为"密码式"（password）。
+
+`第四种方式：凭证式`
+
+最后一种方式是凭证式（client credentials），适用于没有前端的命令行应用，即在命令行下请求令牌。
+
+这四种模式有各自的特点，分别适用于不同的开发场景，可以更具实际情况进行选择。
+
+下面介绍在前后端分离中使用的密码模式
+
+**添加依赖**
+
+```xml
+    <dependencies>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.lettuce</groupId>
+                    <artifactId>lettuce-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
 
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security.oauth</groupId>
+            <artifactId>spring-security-oauth2</artifactId>
+            <version>2.3.3.RELEASE</version>
+        </dependency>
+    </dependencies>
+```
 
 
+**配置Redis**
+
+```java
+spring.redis.database=0
+spring.redis.host=47.106.254.86
+spring.redis.password=xxx
+spring.redis.jedis.pool.min-idle=0
+spring.redis.lettuce.pool.max-idle=8
+spring.redis.jedis.pool.max-wait=-1ms
+spring.redis.jedis.pool.max-active=8
+```
+
+**配置授权服务器**
+
+授权服务器与资源服务器可以是同一台。也可以是不同服务器，这里是使用一样的服务器，通过配置分别开启授权服务器与资源服务器，首先是资源服务器
+
+```java
+@Configuration
+@EnableAuthorizationServer
+public class AuthorizationServerConfig extends AuthorizationServerConfigurerAdapter {
+    //支持密码模式
+    @Autowired
+    AuthenticationManager authenticationManager;
+    //完成Redis缓存，将令牌信息保存到Redis
+    @Autowired
+    RedisConnectionFactory redisConnectionFactory;
+    //刷新令牌支持
+    @Autowired
+    UserDetailsService userDetailsService;
+    //启用加密密码
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        return new BCryptPasswordEncoder(10);
+    }
+    @Override
+    public void configure(ClientDetailsServiceConfigurer clients)throws Exception{
+        clients.inMemory()
+                .withClient("password")
+                .authorizedGrantTypes("password","refresh_token")
+                .accessTokenValiditySeconds(1800)
+                .resourceIds("rid")
+                .scopes("all")
+                .secret("$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwPyQgvLb4a2");
+    }
+    @Override
+    public void configure(AuthorizationServerEndpointsConfigurer endpoints) throws Exception{
+        endpoints.tokenStore(new RedisTokenStore(redisConnectionFactory))
+                .authenticationManager(authenticationManager)
+                .userDetailsService(userDetailsService);
+
+    }
+    @Override
+    public void  configure(AuthorizationServerSecurityConfigurer security) throws Exception{
+        security.allowFormAuthenticationForClients();
+    }
+}
+```
+
+上面的配置第一个配置方法是配置password授权模式，authorizedGrantTypes表示Oauth2中的授权模式为password和refresh_token两种，在标准的Oauth2中并不包含刷新，就需要添加accessTokenValiditySeconds模式，该方法配置过期时间为1800秒，resourceIds配置了资源id，scopes方法配置了加密后的密码，明文是123，后一个配置方法配置了缓存到Redis，最后一个配置方法是支持client_id和client_secret做登录验证。
+
+**配置资源服务器**
+
+```java
+@Configuration
+@EnableResourceServer
+public class ResourceServerConfig extends ResourceServerConfigurerAdapter {
+    @Override
+    public  void configure(ResourceServerSecurityConfigurer resource)throws Exception{
+        resource.resourceId("rid").stateless(true);
+    }
+    @Override
+    public void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .antMatchers("/admin/**").hasRole("admin")
+                .antMatchers("/user/**").hasRole("user")
+                .anyRequest().authenticated();
+    }
+}
+```
+
+第一个配置方法配置资源id，这里的id和授权服务器中资源id一样，然后设置这些资源令牌认证。
+
+**配置Security**
+
+```java
+@Configuration
+public class MySecurityConfig extends WebSecurityConfigurerAdapter {
+    @Bean
+    @Override
+    public AuthenticationManager authenticationManager()throws Exception{
+        return super.authenticationManager();
+    }
+    @Bean
+    @Override
+    protected UserDetailsService userDetailsService(){
+        return super.userDetailsService();
+    }
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth)throws Exception{
+        auth.inMemoryAuthentication()
+                .withUser("admin")
+                .password("$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwPyQgvLb4a2")
+                .roles("admin")
+                .and()
+                .withUser("sang")
+                .password("$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwPyQgvLb4a2")
+                .roles("user");
+    }
+    @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.antMatcher("/oauth/**").authorizeRequests()
+                .antMatchers("/oauth/**").permitAll()
+                .and().csrf().disable();
+    }
+}
+```
+
+与前面不一样的是，这里多了两个Bean，两个Bean作为将注入授权服务器配置类使用，另外这里oauth模式的url请求被直接放行不需要验证。前面的资源服务器中也添加了配置，但是Security中的配置优先级更高，所以先执行这里的配置。
+
+最后添加验证控制器：
+
+```java
+@RestController
+public class index {
+    @GetMapping("/admin/index")
+    public  String admin(){
+        return "Hello Admin";
+    }
+    @GetMapping("/index")
+    public  String index(){
+        return "Hello";
+    }
+    @GetMapping("/user/index")
+    public  String user(){
+        return "Hello User";
+    }
+}
+```
 
 
+接下来启动Redis，第一步是要获取到令牌，输入如下url（方法为POST）：
 
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a29.png)
 
+转换为具体的url为`http://localhost:8080/oauth/token?username=sang&password=123&grant_type=password&client_id=password&scope=all&client_secret=123`
 
+返回的JSON中access_token就是令牌信息。refresh_token是用于刷新的令牌。expires_in为过期时间单位为秒。如果想刷新令牌，输入如下url（POST）
 
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a30.png)
+
+url为`http://localhost:8080/oauth/token?grant_type=refresh_token&refresh_token=915495bc-2687-469e-b211-9251ec21b00e&client_id=password&client_secret=123`
+
+在返回的信息中可以看到令牌变化了。
+
+最后在url中加入令牌即可访问`http://localhost:8080/user/index?access_token=bbf61f63-2af8-4a79-b63b-85c2fde0eadf`如果权限不对，返回错误JSON
 
 
 

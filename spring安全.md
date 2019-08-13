@@ -1180,7 +1180,7 @@ url为`http://localhost:8080/oauth/token?grant_type=refresh_token&refresh_token=
 
 最后在url中加入令牌即可访问`http://localhost:8080/user/index?access_token=bbf61f63-2af8-4a79-b63b-85c2fde0eadf`如果权限不对，返回错误JSON
 
-<b id="a1"></b>
+<b id="a5"></b>
 
 ### :bowling:Spring Boot整合Shiro ###
 

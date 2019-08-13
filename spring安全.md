@@ -10,6 +10,9 @@
 
 :arrow_double_down:[OAuth2](#a4)
 
+:arrow_double_down:[Spring Boot整合Shiro](#a5)
+
+
 <b id="a1"></b>
 
 ### :bowling:Spring Security的基本配置 ###
@@ -1177,5 +1180,186 @@ url为`http://localhost:8080/oauth/token?grant_type=refresh_token&refresh_token=
 
 最后在url中加入令牌即可访问`http://localhost:8080/user/index?access_token=bbf61f63-2af8-4a79-b63b-85c2fde0eadf`如果权限不对，返回错误JSON
 
+<b id="a1"></b>
+
+### :bowling:Spring Boot整合Shiro ###
+
+Apache是一个开源的轻量级的java安全框架，它提供验证，授权，密码管理以及会话管理等功能，相比Security更直观，更简单。下面介绍shiro使用：
+
+添加依赖
+
+```xml
+    <dependencies>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.shiro</groupId>
+            <artifactId>shiro-spring-boot-web-starter</artifactId>
+            <version>1.4.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.theborakompanioni</groupId>
+            <artifactId>thymeleaf-extras-shiro</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+    </dependencies>
+```
+
+基本配置：
+
+```java
+shiro.enabled=true                  --开启Shiro配置
+shiro.web.enabled=true              --开启Shiro Web配置
+shiro.loginUrl=/login               --登录的默认地址/login
+shiro.successUrl=/index             --登录成功后跳转的界面
+shiro.unauthorizedUrl=/unauthorized             --未授权的跳转界面
+shiro.sessionManager.sessionIdUrlRewritingEnabled=true         --是否允许通过URL参数实现会话
+shiro.sessionManager.sessionIdCookieEnabled=true               --是否允许通过Cookies实现会话跟踪
+```
 
 
+配置Shiro：
+
+```java
+@Configuration
+public class ShiroConfig {
+    //定义用户信息
+    @Bean
+    public Realm realm(){
+        TextConfigurationRealm realm = new TextConfigurationRealm();
+        realm.setUserDefinitions("sang=123,user\n admin=123,admin");  //\n为下一行用户信息
+        realm.setRoleDefinitions("admin=read,write\n user=read");  //读写权限配置
+        return  realm;
+    }
+    //定义过滤规则anon可以匿名访问
+    @Bean
+    public ShiroFilterChainDefinition shiroFilterChainDefinition(){
+        DefaultShiroFilterChainDefinition chainDefinition =
+                new DefaultShiroFilterChainDefinition();
+        chainDefinition.addPathDefinition("/login","anon");
+        chainDefinition.addPathDefinition("/doLogin","anon");           
+        chainDefinition.addPathDefinition("/logout","logout");          //注销请求
+        chainDefinition.addPathDefinition("/**","authc");   //需要认证
+        return  chainDefinition;
+    }
+    //支持在模板页中使用shiro标签
+    @Bean
+    public ShiroDialect shiroDialect(){
+        return  new ShiroDialect();
+    }
+}
+
+```
+
+
+异常处理：
+
+```java
+@ControllerAdvice
+public class ExceptionController {
+    @ExceptionHandler(ArithmeticException.class)
+    public ModelAndView error(AuthorizationException e){
+        ModelAndView mv = new ModelAndView("unauthorized");
+        mv.addObject("error",e.getMessage());
+        return  mv;
+    }
+}
+```
+
+最后配置模板页进行测试，在resource文件夹下创建Templates文件夹，并创建如下测试文件：
+
+**index.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <meta charset="UTF-8">
+    <title>Index</title>
+</head>
+<body>
+    <h3>Hello <shiro:principal/></h3>  <!--显示用户名-->
+    <h3><a href="/logout">注销登录</a></h3>
+    <h3><a shiro:hasRole="admin" href="/admin">管理员界面</a></h3>
+    <h3><a shiro:hasAnyRoles="admin,user" href="/user">用户界面</a></h3>
+</body>
+</html>
+```
+
+**login.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>login</title>
+</head>
+<body>
+    <form action="/doLogin" method="post">
+        <label>用户名</label>
+        <input type="text" name="username"><br>
+        <label>密码</label>
+        <input type="password" name="password">
+        <div th:text="${error}"></div>
+        <input type="submit" value="登录">
+    </form>
+</body>
+</html>
+```
+
+**unauthorized.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Unauthorized</title>
+</head>
+<body>
+    <h3>未获取授权，非法访问</h3>
+    <h3 th:text="${error}"></h3>
+</body>
+</html>
+```
+
+**user.html**
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User</title>
+</head>
+<body>
+<h3>用户界面</h3>
+</body>
+</html>
+```
+
+**admin.html**
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin</title>
+</head>
+<body>
+<h3>管理员界面</h3>
+</body>
+</html>
+```
+
+运行测试成功说明配置正确。

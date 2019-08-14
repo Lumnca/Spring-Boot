@@ -110,6 +110,186 @@ WebSocket既然有这么多的优势，使用场景当然也是非常广泛的�
 ```
 
 
+这里需要引入jQuery，接下来配置WebSocket，Spring框架提供了基于WebSocket的STOMP支持，STOMP是一个简单的协议，通常用于中间服务器在客户端之间的异步消息传递，配置如下：
+
+```java
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry config){
+        config.enableSimpleBroker("/topic");
+        config.setApplicationDestinationPrefixes("/app");
+    }
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry){
+        registry.addEndpoint("/chat").withSockJS();
+    }
+}
+```
+
+`config.enableSimpleBroker("/topic")`表示设置消息代理的前缀，即如果消息的前缀是/topic，就会将消息转发给消息代理（borker），再由消息代理将消息广播给当前连接的客户端。
+
+`config.setApplicationDestinationPrefixes("/app");`表示配置了一个或者多个前缀，通过这些前缀过滤出需要被注解方法处理的消息，例如，前缀为app的destination可以通过@MessageMapping注解的方法处理，而其他destination例如（/topic，/queue）将被直接交给broker处理。` registry.addEndpoint("/chat").withSockJS();`则表示定义一个前缀为“/chat”的endpoint，并开启sockjs支持，sockjs可以解决浏览器对WebSocket兼容性问题，客户端通过这里配置的URL来建立WebSocket连接。
+
+定义控制器
+
+```java@Controller
+public class index {
+    @MessageMapping("/hello")
+    @SendTo("/topic/greetings")
+    public Message greeting(Message message)throws Exception{
+        return message;
+    }
+}
+```
+
+实体类Message(可自行添加属性)
+
+```java
+public class Message {
+    private String name;
+    private String content;
+    private String iden;
+    private Date date;
+    public Message(){
+
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Date getDate() {
+        return date;
+    }
+
+    public void setDate(Date date) {
+        this.date = date;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public String getIden() {
+        return iden;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public void setIden(String iden) {
+        this.iden = iden;
+    }
+}
+```
+
+构建聊天界面：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>聊天</title>
+    <script src="/webjars/jquery/jquery.min.js"></script>
+    <script src="/webjars/sockjs-client/sockjs.min.js"></script>
+    <script src="/webjars/stomp-websocket/stomp.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body>
+<div>
+    <label for="name">输入用户名</label>
+    <input type="text" id="name" placeholder="用户名"><br>
+</div>
+<div>
+    <button id="connect" type="button">连接</button>
+    <button id="disconnect" type="button">断开连接</button>
+</div>
+<div id="chat" style="display: none"></div>
+<div id="">
+    <label for="name">请输入聊天类容</label>
+    <input type="text" id="content" placeholder="聊天内容">
+</div>
+<button id="send" type="button">发送</button>
+<div id="greetings">
+    <div id="conversation" style="display: none">群聊进行中。。。</div>
+</div>
+</body>
+</html>
+```
 
 
+创建app.js
 
+```javaScript
+var stompClient = null;
+function  setConnected(connected) {
+    $("#connect").prop("disabled",connected);
+    $("#disconnect").prop("disabled",!connected);
+    if(connected){
+        $("#conversation").show();
+        $("#chat").show();
+    }
+    else {
+        $("#conversation").hide();
+        $("#chat").hide();
+    }
+    $("#greetings").html("");
+}
+
+function connect() {
+    if(!$("#name").val()){
+        return ;
+    }
+    var  socket = new SockJS("/chat");
+    stompClient = Stomp.over(socket);
+    stompClient.connect({},function (frame) {
+        setConnected(true);
+        stompClient.subscribe("/topic/greetings",function (greeting) {
+            showGreeting(JSON.parse(greeting.body));
+        });
+    });
+}
+function disconnect() {
+    if(stompClient !==null){
+        stompClient.disconnect();
+    }
+    setConnected(false)
+
+}
+function sendName() {
+    stompClient.send("/app/hello",{},JSON.stringify({
+        'name' : $("#name").val(),
+        'content' : $("#content").val(),
+        'date' : new Date(),
+        'iden' : 'USer'
+    }));
+}
+
+function  showGreeting(message) {
+    $("#greetings").append("<div>"+message.name+":"+message.content+"<br>"+"时间:"+new Date()+"</div>");
+}
+
+$(function () {
+    $("#connect").click(function () {
+        connect();
+    });
+    $("#disconnect").click(function () {
+        disconnect();
+    })
+    $("#send").click(function () {
+        sendName();
+    })
+})
+```
+
+connect方法表示建立一个WebSocket连接，在建立WebSocket连接时，用户必须先输入用户名，然后才能建立连接。后面的就是创建连接，然后创建STOMP实例发起连接请求，在连接成功的回调方法中，首先调用 setConnected(true)方法进行页面设置，然后调用STOMP的subscribe方法订阅服务器发送回来的消息，并将服务器发送的消息展示出来。
+
+接下来就可以测试了，每打开一个`http://localhost:8080/chat.html`链接一个用户就可以参与群聊。

@@ -296,3 +296,147 @@ connect方法表示建立一个WebSocket连接，在建立WebSocket连接时，�
 
 **消息点对点发送**
 
+实现一对一聊天需要额外添加修改配置：
+
+添加Security依赖
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+```
+
+配置Security：
+
+```java
+@Configuration
+public class config extends WebSecurityConfigurerAdapter {
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        return new BCryptPasswordEncoder(10);
+    }
+    @Override
+    protected void  configure(AuthenticationManagerBuilder auth)throws Exception{
+        auth.inMemoryAuthentication()
+                .withUser("admin")
+                .password("$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwPyQgvLb4a2")
+                .roles("admin")
+                .and()
+                .withUser("sang")
+                .password("$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwPyQgvLb4a2")
+                .roles("user");
+    }
+    @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .anyRequest().authenticated()
+                .and()
+                .formLogin().permitAll();
+    }
+```
+
+改造WebSocket配置
+
+```java
+@Configuration
+@EnableWebSocketMessageBroker
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+    @Override
+    public void configureMessageBroker(MessageBrokerRegistry config){
+        config.enableSimpleBroker("/topic","/queue");
+        config.setApplicationDestinationPrefixes("/app");
+    }
+    @Override
+    public void registerStompEndpoints(StompEndpointRegistry registry){
+        registry.addEndpoint("/chat").withSockJS();
+    }
+}
+```
+
+配置控制器：
+
+```java
+@Controller
+public class index {
+    @Autowired
+    SimpMessagingTemplate messagingTemplate;
+    @MessageMapping("/hello")
+    @SendTo("/topic/greetings")
+    public Message greeting(Message message)throws Exception{
+       return message;
+    }
+    @MessageMapping("/chat")
+    public void chat(Principal principal,Chat chat){
+        String from = principal.getName();
+        chat.setFrom(from);
+        messagingTemplate.convertAndSendToUser(chat.getTo(),"/queue/chat",chat);
+    }
+}
+```
+
+创建聊天界面
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>聊天</title>
+    <script src="/webjars/jquery/jquery.min.js"></script>
+    <script src="/webjars/sockjs-client/sockjs.min.js"></script>
+    <script src="/webjars/stomp-websocket/stomp.min.js"></script>
+    <script src="app.js"></script>
+</head>
+<body>
+    <div id="chat">
+        <div id="chatsContent"></div>
+        <div>
+            请输入聊天内容：
+            <input type="text" id="content" placeholder="聊天内容">
+            目标用户：
+            <input type="text" id="to" placeholder="目标用户">
+            <button id="send" type="button">发送</button>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+
+修改app.js
+
+```javascript
+var stompClient = null;
+
+function connect() {
+    var  socket = new SockJS("/chat");
+    stompClient = Stomp.over(socket);
+    stompClient.connect({},function (frame) {
+        stompClient.subscribe("/user/queue/chat",function (chat) {
+            showGreeting(JSON.parse(chat.body));
+        });
+    });
+}
+
+function sendMeg() {
+    stompClient.send("/app/chat",{},JSON.stringify({
+        'content' : $("#content").val(),
+        'to' : $("#to").val()
+    }));
+}
+
+function  showGreeting(message) {
+    $("#chatsContent").append("<div>"+message.from+":"+message.content+"<br>"+"时间:"+new Date()+"</div>");
+}
+
+$(function () {
+    connect();
+    $("#send").click(function () {
+        sendMeg();
+    });
+})
+
+```
+
+然后登陆用户即可，密码为123,，两边都登陆后就可以实现登录，不过需要在目标用户输入用户名才行。

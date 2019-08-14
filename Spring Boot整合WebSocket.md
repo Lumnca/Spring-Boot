@@ -293,3 +293,6 @@ $(function () {
 connect方法表示建立一个WebSocket连接，在建立WebSocket连接时，用户必须先输入用户名，然后才能建立连接。后面的就是创建连接，然后创建STOMP实例发起连接请求，在连接成功的回调方法中，首先调用 setConnected(true)方法进行页面设置，然后调用STOMP的subscribe方法订阅服务器发送回来的消息，并将服务器发送的消息展示出来。
 
 接下来就可以测试了，每打开一个`http://localhost:8080/chat.html`链接一个用户就可以参与群聊。
+
+**消息点对点发送**
+

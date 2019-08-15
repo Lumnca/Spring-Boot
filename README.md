@@ -21,3 +21,5 @@
 :fallen_leaf:[Spring Boot安全管理](https://github.com/Lumnca/Spring-Boot/blob/master/spring%E5%AE%89%E5%85%A8.md)
 
 :fallen_leaf:[Spring Boot整合WebSocket](https://github.com/Lumnca/Spring-Boot/blob/master/Spring%20Boot%E6%95%B4%E5%90%88WebSocket.md)
+
+:fallen_leaf:[消息管理](https://github.com/Lumnca/Spring-Boot/blob/master/%E6%B6%88%E6%81%AF%E7%AE%A1%E7%90%86.md)

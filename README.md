@@ -25,3 +25,5 @@
 :fallen_leaf:[消息管理](https://github.com/Lumnca/Spring-Boot/blob/master/%E6%B6%88%E6%81%AF%E7%AE%A1%E7%90%86.md)
 
 :fallen_leaf:[应用开发](https://github.com/Lumnca/Spring-Boot/blob/master/%E5%BA%94%E7%94%A8%E5%BC%80%E5%8F%91.md)
+
+:fallen_leaf:[应用监控](https://github.com/Lumnca/Spring-Boot/blob/master/%E5%BA%94%E7%94%A8%E7%9B%91%E6%8E%A7.md)

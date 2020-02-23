@@ -126,14 +126,14 @@ spring-boot-starter-parent虽然方便，但是更多的时候使用自己的par
     }
 ```
 
-这里的参数不是占位符参数：`http://localhost:86/req?name=lumnca`
+这里的参数不是占位符参数,而是url参数形式：`http://localhost:86/req?name=lumnca` ，只适用于GET方法，
 
-如果想根据参数名称对应传参，可以向下使用注解:
+如果想根据参数名称对应传参，还可以向下面使用注解:
 
 ```java
 @RestController
 public class Test {
-    @PostMapping("/test")
+    @GetMapping("/test")
     public List<String> getTest(@PathVariable(name = "id") String id,@PathVariable(name = "pw") String pw){
         List<String> list = new ArrayList<>();
         list.add(id);
@@ -146,7 +146,18 @@ public class Test {
 @PathVariable注解的name属性可以使方法参数对应url的对应该名称参数。
 
 
-当然如果你的请求为POST则 为@PostMapping()，用法与GET一样，更多方法请求使用@XXXMapping() 其中XXX为请求类型。
+当然如果你的请求为POST则 为@PostMapping()，用法与GET一样，更多方法请求使用@XXXMapping() 其中XXX为请求类型。对于这类型请求方法，需要使用@RequestBody注解来对应数据，如下：
+
+```
+@RestController
+public class Test {
+    @PostMapping("test")
+    public String getTest(@RequestBody String txt){
+        return  "INPUT:"+ txt;
+    }
+}
+```
+由于参数是String，这里会返回一个JSON字符串，可以建立模型类，直接将参数传到类的参数里面。
 
 <b id="a3"></b>
 

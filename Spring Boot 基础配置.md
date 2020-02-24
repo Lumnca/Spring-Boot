@@ -148,7 +148,7 @@ public class Test {
 
 当然如果你的请求为POST则 为@PostMapping()，用法与GET一样，更多方法请求使用@XXXMapping() 其中XXX为请求类型。对于这类型请求方法，需要使用@RequestBody注解来对应数据，如下：
 
-```
+```java
 @RestController
 public class Test {
     @PostMapping("test")
@@ -157,7 +157,18 @@ public class Test {
     }
 }
 ```
-由于参数是String，这里会返回一个JSON字符串，可以建立模型类，直接将参数传到类的参数里面。
+
+由于参数是String，这里会返回一个JSON字符串，可以建立模型类，直接将参数传到类的参数里面，如果只有一个就得使用JOSN解析来获取了。当然也要看请求类型，如下对应使用注解:
+
+```java
+@RequestParam : Url参数，application/x-www-form-urlencoded
+
+@RequestBody : application/json
+
+@RequestPart : multipart/form-data
+
+@ModelAttribute :  Url参数, application/x-www-form-urlencoded
+```
 
 <b id="a3"></b>
 

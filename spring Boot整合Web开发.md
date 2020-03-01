@@ -18,7 +18,7 @@
 
 :arrow_down:[自定义](#a8)
 
-:arrow_down:[Cookie与Session](#a9)
+:arrow_down:[Cookie](#a9)
 
 <b id="a1"></b>
 
@@ -689,4 +689,92 @@ class MyFileter implements Filter{
         else{
             System.out.println("认证成功");
             filterChain.doFilter(request,response);                    //成功则把请求
-            
+         }
+      }
+```
+
+<b id="a9"></b>
+
+### :fallen_leaf:Cookie ###
+
+:arrow_double_up:[返回目录](#t)
+
+Cookies与Session是两种获取用户访问的数据通信，在Servelt中就已经介绍使用过了，Spring Boot也整合了Cookie与Session。
+
+
+**设置HTTP Cookie**
+
+要在Spring Boot中设置cookie，我们可以使用HttpServletResponse类的方法addCookie()。需要做的就是创建一个新的Cookie对象并将其添加到响应中。
+
+```java
+@RestController
+public class Cookies {
+    @GetMapping("/cookies")
+    public String getCookies(HttpServletRequest request, HttpServletResponse response){
+        Cookie cookie = new Cookie("id","JA123456");
+        response.addCookie(cookie);
+        return "SUCCESS";
+    }
+}
+
+```
+
+**读取HTTP Cookie**
+
+在前端可以打开控制台查看cookie，也可以通过JS代码`document.cookies`来获取cookie。如果服务器要获取cookie信息，可以使用注解@CookieValue来获取HTTP cookie的值，此注解可直接用在控制器方法参数中。
+
+```java
+    @GetMapping("/show")
+    public String showData(@CookieValue(name = "id")String id){
+        return "Cookie id :"+id;
+    }
+```
+
+除了使用@CookieValue注解，我们还可以使用HttpServletRequest类作为控制器方法参数来读取所有cookie。此类提供了getCookies()方法，该方法以数组形式返回浏览器发送的所有cookie。
+
+```java
+ @GetMapping("/all-cookies")
+    public String readAllCookies(HttpServletRequest request) {
+
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            return Arrays.stream(cookies)
+                    .map(c -> c.getName() + "=" + c.getValue())
+                    .collect(Collectors.joining(", "));
+        }
+
+        return "No cookies";
+    }
+```
+
+**cookie有效时间**
+
+如果没有为cookie指定过期时间，则其生命周期将持续到Session过期为止。这样的cookie称为会话cookie。会话cookie保持活动状态，直到用户关闭其浏览器或清除其cookie。但是您可以覆盖此默认行为，并使用类的setMaxAge()方法设置cookie的过期时间。
+
+如：`cookie.setMaxAge(7 * 24 * 60 * 60); // 7天过期`
+
+现在，usernameCookie不会因为Seesion结束到期，而是会在接下来的7天保持有效。传递给setMaxAge()方法的到期时间以秒为单位。到期日期和时间是相对于设置cookie的客户端而不是服务器而言的。
+
+**安全机制**
+
+安全的cookie是仅可以通过加密的HTTPS连接发送到服务器的cookie。无法通过未加密的HTTP连接将cookie发送到服务器。也就是说，如果设置了setSecure(true)，该Cookie将无法在Http连接中传输，只能是Https连接中传输。
+
+`cookie.setSecure(true); //Https 安全cookie`
+
+HttpOnly cookie用于防止跨站点脚本（XSS）攻击，也就是说设置了Http Only的Cookie不能通过JavaScript的Document.cookieAPI访问，仅能在服务端由服务器程序访问。
+
+`cookie.setHttpOnly(true); //不能被js访问的Cookie`
+
+**删除cookie**
+
+要删除Cookie，需要将Max-Age设置为0，并且将Cookie的值设置为null。不要将Max-Age指令值设置为-1负数。否则，浏览器会将其视为会话cookie。
+
+```java
+// 将Cookie的值设置为null
+Cookie cookie = new Cookie("username", null);
+//将`Max-Age`设置为0
+cookie.setMaxAge(0);
+ 
+response.addCookie(cookie);
+```
+

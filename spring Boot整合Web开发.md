@@ -261,6 +261,8 @@ public class file {
 }
 ```
 
+注意需要指定文件名称参数课使用@RequestParam("uploadFile")注解。不然就必须保证前端表单的name与接口参数一致。
+
 上面就是上传文件简单的代码，该文件会上传到项目的根目录下。因为` System.getProperty("user.dir") `获取的是项目的路径名称，transferTo为文件上传方法。这样就完成了一个简单的文件上传。当然可以在配置文件中为文件上传进行配置其配置如下：
 
 ```

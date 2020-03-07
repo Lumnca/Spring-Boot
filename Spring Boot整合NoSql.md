@@ -929,7 +929,81 @@ rvm install 2.6.3
 gem install redis
 ```
 
-文档丢失？
+**第一步：创建节点**
+
+首先在Redis中创建节点，由于Redis集群必须至少创建6个节点，所以我们首先创建6个文件夹分别对应各自的端口号如下：
+
+```
+mkdir redis-cluster  创立文件夹
+cd  redis-cluster  
+mkdir 7000   建立端口号的文件夹
+mkdir 7001
+mkdir 7002
+mkdir 7003
+mkdir 7004
+mkdir 7005
+```
+
+将redis的配置文件复制到以上文件夹下：
+
+```
+cp redis.conf 7000/ 
+cp redis.conf 7001/ ...
+```
+
+修改各个配置文件：
+
+```
+masterauth 123
+requirepass 123  --集群密码配置
+
+pidfile /var/run/redis_7001.pid
+logfile "/var/log/redis-7001.log"  --改成对应的端口号
+pidfile /var/run/redis_7001.pid
+cluster-config-file nodes-7001.conf
+
+
+appendonly yes
+cluster-enabled yes
+cluster-node-timeout 15000
+
+bind 127.0.0.1 --本机地址
+
+```
+
+然后使用命令启动各个节点：
+
+```
+../src/redis-server 7000/redis.conf 
+../src/redis-server 7001/redis.conf 
+...
+```
+
+查看节点是否运行：
+
+```
+ps -ef  | grep redis
+```
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a45.png)
+
+如上显示表示成功！
+
+**集群构建**
+
+直接使用命令（在安装了ruby后）：
+
+```
+./redis-trib.rb create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
+```
+
+出现提示信息后输入yes 最后绿色输出为OK就行了。如果构建错误考虑如下情况：
+
+`1.端口是否允许访问，防火墙是否关闭`
+
+`2.是否有密码，如果没密码注释上面密码`
+
+`3.IP地址不允许访问，尝试127.0.0.1 0.0.0.0`
 
 ***
 

@@ -929,55 +929,76 @@ rvm install 2.6.3
 gem install redis
 ```
 
-**第一步：创建节点**
+**集群配置**
 
-首先在Redis中创建节点，由于Redis集群必须至少创建6个节点，所以我们首先创建6个文件夹分别对应各自的端口号如下：
-
-```
-mkdir redis-cluster  创立文件夹
-cd  redis-cluster  
-mkdir 7000   建立端口号的文件夹
-mkdir 7001
-mkdir 7002
-mkdir 7003
-mkdir 7004
-mkdir 7005
-```
-
-将redis的配置文件复制到以上文件夹下：
+首先在Redis中创建节点，由于Redis集群必须至少创建6个节点，接下来创建 redisCluster 文件夹，将前面下载的 Redis 压缩文件复制到 redisCluster 文件
+夹中之后编译安装，操作命令如下：
 
 ```
-cp redis.conf 7000/ 
-cp redis.conf 7001/ ...
+mkdir redisCluster
+cp-f./redis-4.0.10.tar.gz./ redisCluster/
+cd redisCluster 
+tar-zxvf redis-4.0.10.tar.gz 
+cd redis-4.0.10
+make MALLOC=libc
+make install
 ```
 
-修改各个配置文件：
+安装成功后，将redis-4.0.10/src目录下的redis-trib.rb文件复制到redisCluster目录下，命令如下：
 
 ```
-masterauth 123
-requirepass 123  --集群密码配置
-
-pidfile /var/run/redis_7001.pid
-logfile "/var/log/redis-7001.log"  --改成对应的端口号
-pidfile /var/run/redis_7001.pid
-cluster-config-file nodes-7001.conf
-
-
-appendonly yes
-cluster-enabled yes
-cluster-node-timeout 15000
-
-bind 127.0.0.1 --本机地址
-
+cp -f ./redis-4.0.10/src/redis-trib.rb  ./
 ```
 
-然后使用命令启动各个节点：
+然后在redisCluster目录下创建6个文件夹，分别命名为8001、8002、8003、8004、8005、8006，再将redis-4.0.10目录下的redis.conf文件分别往这6个目录中复制一份，然后对每个目录中的redis.conf文件进行修改，以8001目录下的redis.conf文件为例，主要修改如下配置
 
 ```
-../src/redis-server 7000/redis.conf 
-../src/redis-server 7001/redis.conf 
-...
+port 8001
+#bind 127.0.0.1
+cluster-enabled yes 
+cluster-config-file nodes-8001.conf 
+protected no 
+daemonize yes 
+requirepass 123456
+masterauth 123456
 ```
+
+这里的配置在6.1.2小节的单机版安装配置的基础上增加了几条，其中端口修改为8001，cluster-enabled 表示开启集群，cluster-config-file表示集群节点的配置文件，由于每个节点都开启了密码认证，因此又增加了masterauth配置，使得从机可以登录到主机上。按照这里的配置，对8002~8006目录中的redis.conf文件依次进行修改，注意修改时每个文件的port 和cluster-config-file不一样。全部修改完成后，进入redis-4.0.10目录下，分别启动6个Redis实例，相关命令如下：
+
+```
+redis-server../8001/redis.conf
+redis-server../8002/redis.conf
+redis-server../8003/redis.conf
+redis-server../8004/redis.conf
+redis-server../8005/redis.conf
+redis-server../8006/redis.conf
+```
+
+当6个Redis实例都启动成功后，回到redisCluster目录下，首先对redis-trib.rb文件进行修改，由于配置了密码登录，而该命令在执行时默认没有密码，因此将登录不上各个Redis实例，此时用vi编辑器打开redis-trib.rb文件，搜索到如下一行：
+
+`=Redis.new（：host =>@info[：host]，：port =>Qinfo[：port]，：timeout =>60）`
+
+修改这一行，添加密码参数：
+
+`=Redis.new（：host =>einfo[：host]，：port =>@info[：port]，：timeout=>60，：password=>"123456"）`
+
+123456就是各个Redis实例的登录密码。
+
+这些配置都完成后，接下来就可以创建Redis集群了。执行如下命令创建Redis集群：
+
+```
+./redis-trib.rb create--replicas 1 192.168.248.144：8001 192.168.248.144：8002192.168.248.144：8003192.168.248.144：8004192.168.248.144：8005 192.168.248.144：8006
+```
+192.168.248.144改为你的IP地址
+
+其中，replicas表示每个主节点的slave数量。在集群的创建过程中会分配主机和从机，每个集群在创建过程中都将分配到一个唯一的id并分配到一段slot。
+当集群创建成功后，进入redis-4.0.10目录中，登录任意Redis实例，命令如下：
+
+```
+redis-cli -p 8001- a 123456 -c
+```
+
+p表示要登录的集群的端口，-a表示要登录的集群的密码，-c则表示以集群的方式登录。登录成功后，通过cluster info命令可以查询集群状态信息（如图6-5所示），通过cluster nodes命令可以查询集群节点信息（如图6-6所示），在集群节点信息中，可以看到每一个节点的id，该节点是slave还是master，如果是slave，那么它的master的id是什么，如果是master，那么每一个master的slot范围是多少，这些信息都会显示出来。
 
 查看节点是否运行：
 
@@ -989,32 +1010,167 @@ ps -ef  | grep redis
 
 如上显示表示成功！
 
-**集群构建**
+当集群创建成功后，随着业务的增长，有可能需要添加主节点，添加主节点需要先构建主节点实例，将redisCluster目录下的8001目录再复制一份，名为8007，根据第3步的集群配置修改8007目录下的redis.conf文件，修改完成后，在redis-4.0.10目录下运行如下命令启动该节点：
 
-直接使用命令（在安装了ruby后）：
+`redis-server../8007/redis.conf`
 
-```
-./redis-trib.rb create --replicas 1 127.0.0.1:7000 127.0.0.1:7001 127.0.0.1:7002 127.0.0.1:7003 127.0.0.1:7004 127.0.0.1:7005
-```
+启动成功后，进入redisCluster目录下，执行如下命令将该节点添加到集群中：
 
-出现提示信息后输入yes 最后绿色输出为OK就行了。如果构建错误考虑如下情况：
+`./redis-trib.rb add-node 192.168.248.144：8007 192.168.248.144：8001`
 
-`1.端口是否允许访问，防火墙是否关闭`
+可以看到，新实例已经被添加进集群中，但是由于slot已经被之前的实例分配完了，新添加的实例没有slot，也就意味着新添加的实例没有存储数据的机会，此时需要从另外三个实例中拿出一部分slot分配给新实例，具体操作如下。首先，在redisCluster目录下执行如下命令对slot重新分配：
 
-`2.是否有密码，如果没密码注释上面密码`
+`./redis-trib.rb reshard 192.168.248.144：8001`
 
-`3.IP地址不允许访问，尝试127.0.0.1 0.0.0.0`
+第二个参数表示连接集群中的任意一个实例。
 
+上面添加的节点是主节点，从节点的添加相对要容易一些。添加从节点的步骤如下：首先将redisCluster目录下的8001目录复制一份，命名为8008，然后按照6.1.2小节中第3步的配置修改8008目录下的redis.conf，修改完成后，启动该实例，然后输入如下命令添加从节点：
 
-启动集群命令：`redis-cli -h IP -p 端口号 -a "密码" -c ` 
+`./redis-trib.rb add-node--slave--master-id 
+e0f2751b46c9ed3ca130e9fc825540386feaafb2192.168.248.144：8008 192.168.248.144：8001`
 
-IP与配置文件内容一致127.0.0.1只允许本地访问，不允许远程访问，注释掉bind 127.0.0.1 --本机地址可以实现远程访问
+添加从节点需要指定该从节点的masterid，-master-id后面的参数即表示该从节点master的id，192.168.248.144：8008表示从节点的地址，192.168.248.144：8001则表示集群中任意一个实例的地址。
 
+当从节点添加成功后，登录集群中任意一个Redis实例，通过cluster nodes命令就可以看到从节点的信息。
 
-
+如果删除的是一个从节点，直接运行如下命令即可删除：`./redis-trib.rb del-node 192.168.248.144：8001122b2098df746afc3a77beddaad85630bf75ab9a`中间的实例地址表示集群中的任意一个实例，最后的参数表示要删除节点的id。但若删除的节点占有slot，则会删除失败，此时按照第5步提到的办法，先将要删除节点的slot全部都分配出去，然后运行如上命令就可以成功删除一个占有slot的节点了。
 
 ***
 
+**整合Spring Boot**
+
+首先添加依赖：
+
+```xml
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+```
+
+配置集群信息
+
+由于集群节点有多个，可以保存在一个集合中，因此这里的配置文件使用YAML格式的，删除resources目录下的application.properties文件，创建application.yml配置文件（YAML配置可以参考2.7节），文件内容如下：
+
+```
+spring:
+  redis:
+    cluster:
+      ports:
+        - 8001
+        - 8002
+        - 8003
+        - 8004
+        - 8005
+        - 8006
+      host: 47.106.254.86
+      poolConfig:
+        max-total: 100
+        max-idle: 50
+        max-wait-millis: -1
+        min-idle: 20
+```
+
+由于本案例Redis实例的host都是一样的，因此这里配置了一个host，而port配置成了一个集合，这些port将被注入一个集合中。poolConfig则是基本的连接池信息配置。
+
+配置Redis：
+
+```java
+
+@Configuration
+@ConfigurationProperties("spring.redis.cluster")
+public class RedisConfig {
+    List<Integer> ports;
+    String host;
+    JedisPoolConfig poolConfig;
+
+    public List<Integer> getPorts() {
+        return ports;
+    }
+
+    public void setPorts(List<Integer> ports) {
+        this.ports = ports;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public JedisPoolConfig getPoolConfig() {
+        return poolConfig;
+    }
+
+    public void setPoolConfig(JedisPoolConfig poolConfig) {
+        this.poolConfig = poolConfig;
+    }
+    @Bean
+    RedisClusterConfiguration redisClusterConfiguration(){
+        RedisClusterConfiguration configuration = new RedisClusterConfiguration();
+        List<RedisNode>nodes=new ArrayList<>();
+        for(Integer port: ports) {
+            nodes.add(new RedisNode(host, port));
+            System.out.println(host+":"+port);
+        }
+        configuration.setPassword(RedisPassword.of("chuan.868"));
+        configuration.setClusterNodes(nodes);
+        return configuration;
+    }
+    @Bean
+    JedisConnectionFactory jedisConnectionFactory() {
+        JedisConnectionFactory factory = new JedisConnectionFactory(redisClusterConfiguration(), poolConfig);
+        return factory;
+    }
+}
+```
+
+通过@ConfigurationProperties注解声明配置文件前缀，配置文件中定义的ports数组、host以及连接池配置信息都将被注入port、host、poolConfig三个属性中。
+配置RedisClusterConfiguration实例，设置Redis登录密码以及Redis节点信息。
+根据RedisClusterConfiguration实例以及连接池配置信息创建Jedis 连接工厂JedisConnectionFactory。
+
+
+接下来测试：
+
+```java
+@RestController
+@ConfigurationProperties(prefix = "spring.redis.cluster")
+public class RedisTest {
+
+
+    @Autowired
+    RedisTemplate redisTemplate;
+    @Autowired
+    StringRedisTemplate stringRedisTemplate;
+    @GetMapping("/demo1")
+    public String demo1(){
+        stringRedisTemplate.opsForValue().set("my","Lumnca");
+        return stringRedisTemplate.opsForValue().get("my");
+    }
+}
+```
+
+输出Lumnca表示配置成功！
+
+集群配置以及使用会有很多问题，其主要是集群配置过程中的细节，配置文件等一定要仔细检查注意细节。
 
 <b id="a3"></b>
 

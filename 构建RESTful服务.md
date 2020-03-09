@@ -133,7 +133,7 @@ public class User implements Serializable {
 
 ```
 
-实体配置类需要注意的是，字段的属性，主键由于是int自增型，因此可以使用GenerationType.IDENTITY自增序列。或者使用GenerationType.AUTO，如果为字符串则不能这样使用注解，后面向大家说明字符串的使用。
+实体配置类需要注意的是，字段的属性，主键由于是int自增型，因此可以使用GenerationType.IDENTITY自增序列。或者使用GenerationType.AUTO，如果为字符串则不能这样使用注解，直接省略这个注解就行。 @Column注解可以对应数据库的字段名。
 
 创建接口：
 
@@ -157,7 +157,7 @@ public interface UserReqository extends JpaRepository<User,String> {
 
 想数据库中添加一个数据可以使用POST请求，然后在请求中添加实体类的JOSN字符串，如下所示：
 
-![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a17.png)
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a18.png)
 
 如上只要返回了对于的数据JSON，则说明请求成功！
 

@@ -150,6 +150,13 @@ public interface UserReqository extends JpaRepository<User,String> {
 
 由于只能使用GET方法所以只能够访问。加上主属性可以看到单个实例：`http://localhost:8080/users/1`
 
+对于数据过多的可以使用page与size参数来查询
+
+其中page是分页，默认是20个数据一页可以自行修改：
+
+`http://localhost:8080/users?page=4?size=10`意为每页10个数据，显示第4页的内容。
+
+
 为了能够做出示例，这里我们使用POSTman工具来演示效果：
 
 
@@ -160,6 +167,8 @@ public interface UserReqository extends JpaRepository<User,String> {
 ![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a18.png)
 
 如上只要返回了对于的数据JSON，则说明请求成功！
+
+
 
 
 **查询数据**
@@ -180,6 +189,7 @@ public interface UserReqository extends JpaRepository<User,String> {
     }
 }
 ```
+
 
 **修改数据**
 

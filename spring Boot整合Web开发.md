@@ -695,7 +695,116 @@ class MyFileter implements Filter{
       }
 ```
 
-<b id="a9"></b>
+<b id="a7"></b>
+
+### :fallen_leaf:配置AOP ###
+
+:arrow_double_up:[返回目录](#t)
+
+<b id="a7"></b>
+
+要介绍面向切面编程（Aspect-Oriented Programming，AOP），需要我们首先考虑这样一个场景：公司有一个人力资源管理系统目前已经上线，但是系统运行不稳定，有时运行得很慢，为了检测出到底是哪个环节出问题了，开发人员想要监控每一个方法的执行时间，再根据这些执行时间判断出问题所在。当问题解决后，再把这些监控移除掉。系统目前已经运行，如果手动修改系统中成千上万个方法，那么工作量未免太大，而且这些监控方法以后还要移除掉；如果能够在系统运行过程中动态添加代码，就能很好地解决这个需求。这种在系统运行时动态添加代码的方式称为面向切面编程（AOP）。Spring框架对AOP提供了很好的支持。在AOP中，有一些常见的概念需要我们了解：
+
+* Joinpoint（连接点）：类里面可以被增强的方法即为连接点。例如，想修改哪个方法的功能，那么该方法就是一个连接点。
+* Pointcut（切入点）：对Joinpoint进行拦截的定义即为切入点。例如，拦截所有以insert开始的方法，这个定义即为切入点。
+* Advice（通知）：拦截到Joinpoint之后所要做的事情就是通知。例如，上文说到的打印日志监控。通知分为前置通知、后置通知、异常通知、最终通知和环绕通知。* * Aspect（切面）：Pointcut和Advice的结合。
+* Target（目标对象）：要增强的类称为Target。
+
+这些是对AOP的简单介绍，接下来看看如何在Spring Boot中实现AOP。
+
+Spring Boot 在Spring的基础上对AOP的配置提供了自动化配置解决方案spring-boot-starter-aop，使开发者能够更加便捷地在Spring Boot项目中使用AOP。配置步骤如下。
+
+首先在Spring Boot Web项目中引入spring-boot-starter-aop依赖，代码如下：
+
+```xml
+ <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-aop</artifactId>
+ </dependency>
+```
+
+然后创建两个测试方法：
+
+```java
+@Service
+public class AopTestMethod {
+    public String getUserById(Integer id){
+        System.out.println("get user id:"+id);
+        return "patty";
+    }
+    public void  deleteUserById(Integer id){
+        System.out.println("delete user id:"+id);
+    }
+}
+```
+
+接下来创建切面：
+
+```java
+
+@Component
+@Aspect
+public class LogAspect {
+    @Pointcut("execution(* app.aop.*.*(..))")
+    public void pc1(){
+
+    }
+    @Before(value = "pc1()")
+    public void before(JoinPoint jp){
+        System.out.println(jp.getSignature().getName()+"方法开始执行！参数为:"+JSON.toJSONString(jp.getArgs()));
+    }
+    @After(value = "pc1()")
+    public void after(JoinPoint jp){
+        System.out.println(jp.getSignature().getName()+"方法执行结束！");
+    }
+    @AfterReturning(value = "pc1()",returning = "result")
+    public void  afterReturning(JoinPoint jp,Object result){
+        System.out.println(jp.getSignature().getName()+"方法的返回值是"+ JSON.toJSONString(result));
+    }
+    @AfterThrowing(value = "pc1()",throwing = "e")
+    public void afterThrowing(JoinPoint jp,Exception e){
+        System.out.println(jp.getSignature().getName()+"方法抛出异常！异常信息为:"+e.getMessage());
+    }
+    @Around(value = "pc1()")
+    public Object around(ProceedingJoinPoint pjp) throws Throwable {
+        return pjp.proceed();
+    }
+}
+```
+
+代码解释：
+
+@Aspect注解表明这是一个切面类。
+
+`@Pointcut 注解`，这是一个切入点定义。execution中的第一个`*`表示方法返回任意值，第二个`*`表示service包下的任意类，第三个`*`表示类中的任意方法，括号中的两个点表示方法参数任意，即这里描述的切入点为service包下所有类中的所有方法。
+
+`@Before注解`，表示这是一个前置通知，该方法在目标方法执行之前执行。通过JoinPoint参数可以获取目标方法的方法名、修饰符等信息。
+
+`@After注解`，表示这是一个后置通知，该方法在目标方法执行之后执行。
+
+`@AfterReturning注解`，表示这是一个返回通知，在该方法中可以获取目标方法的返回值。@AfterReturning注解的returning参数是指返回值的变量名，对应方法的参数。注意，在方法参数中定义了result的类型为Object，表示目标方法的返回值可以是任意类型，若result参数的类型为Long，则该方法只能处理目标方法返回值为Long的情况。当然这里使用JSON转换，所以能够显示任意数据。
+
+`@AfterThrowing注解`，表示这是一个异常通知，即当目标方法发生异常时，该方法会被调用，异常类型为Exception表示所有的异常都会进入该方法中执行，若异常类型为ArithmeticException，则表示只有目标方法抛出的ArithmeticException异常才会进入该方法中处理。
+
+`@Around注解`，表示这是一个环绕通知。环绕通知是所有通知里功能最为强大的通知，可以实现前置通知、后置通知、异常通知以及返回通知的功能。目标方法进入环绕通知后，通过调用ProceedingJoinPoint对象的proceed方法使目标方法继续执行，开发者可以在此修改目标方法的执行参数、返回值等，并且可以在此处理目标方法的异常。
+
+最后就是创建控制器访问了:
+
+```java
+@RestController
+public class AopTest {
+    @Autowired
+    AopTestMethod aopTestMethod;
+    @GetMapping("/aop1")
+    public String getData(){
+        return aopTestMethod.getUserById(1);
+    }
+    @GetMapping("/aop2")
+    public void delData(){
+        aopTestMethod.deleteUserById(1);
+    }
+}
+```
 
 ### :fallen_leaf:Cookie ###
 
@@ -720,6 +829,28 @@ public class Cookies {
 }
 
 ```
+
+可以在控制台看到如下输出：
+
+```
+getData方法开始执行！参数为:[]
+getUserById方法开始执行！参数为:[1]
+get user id:1
+getUserById方法执行结束！
+getUserById方法的返回值是"patty"
+getData方法执行结束！
+getData方法的返回值是"patty"
+
+delData方法开始执行！参数为:[]
+deleteUserById方法开始执行！参数为:[1]
+delete user id:1
+deleteUserById方法执行结束！
+deleteUserById方法的返回值是null
+delData方法执行结束！
+delData方法的返回值是null
+```
+
+
 
 **读取HTTP Cookie**
 

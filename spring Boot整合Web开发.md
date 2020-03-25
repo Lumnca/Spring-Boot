@@ -806,6 +806,76 @@ public class AopTest {
 }
 ```
 
+可以在控制台看到如下输出：
+
+```java
+getData方法开始执行！参数为:[]
+getUserById方法开始执行！参数为:[1]
+get user id:1
+getUserById方法执行结束！
+getUserById方法的返回值是"patty"
+getData方法执行结束！
+getData方法的返回值是"patty"
+
+delData方法开始执行！参数为:[]
+deleteUserById方法开始执行！参数为:[1]
+delete user id:1
+deleteUserById方法执行结束！
+deleteUserById方法的返回值是null
+delData方法执行结束！
+delData方法的返回值是null
+```
+
+***
+
+<b id="a8"></b>
+
+### :fallen_leaf:自定义 ###
+
+:arrow_double_up:[返回目录](#t)
+
+**自定义错误界面**
+
+前面介绍了Spring Boot中的全局异常处理。在处理异常时，开发者可以根据实际情况返回不同的页面，但是这种异常处理方式一般用来处理应用级别的异常，有一些容器级别的错误就处理不了，例如Filter中抛出异常，使用@ControllerAdvice定义的全局异常处理机制就无法处理。
+因此，Spring Boot中对于异常的处理还有另外的方式，这就是本节要介绍的内容。
+在Spring Boot中，默认情况下，如果用户在发起请求时发生了404错误，Spring Boot会有一个默认的页面展示给用户，如图下所示。
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a46.png)
+
+事实上，Spring Boot在返回错误信息时不一定返回HTML页面，而是根据实际情况返回HTML页面或者一段JSON（若开发者发起Ajax请求，则错误信息是一段JSON）。对于开发者而言，这一段HTML或者JSON都能够自由定制。
+
+Spring Boot默认是在error目录下查找4xx、5xx的文件作为错误视图，当找不到时会回到errorHtml方法中，然后使用error作为默认的错误页面视图名，如果名为error的视图也找不到，用户就会看到本节一开始展示的两个错误提示页面。整个错误处理流程大致就是这样的。
+
+通过上面的介绍，读者可能已经发现，要自定义错误页面其实很简单，提供4xx和5xx页面即可。如果开发者不需要向用户展示详细的错误信息，那么可以把错误信息定义成静态页面，直接在**resources/static目录下创建error目录**，然后在**error目录中创建错误展示页面**。错误展示页面的命名规则有两种：一种是**4xx.html、5xx.html**；另一种是直接使用响应码命名文件，例如**404.html、
+405.html、500.html**。第二种命名方式划分得更细，当出错时，不同的错误会展示不同的错误页面，如下图所示。
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a48.png)
+
+当然还可以配置更复杂的错误信息，这里不做过多介绍。
+
+**自定义欢迎界面**
+
+Spring Boot项目在启动后，首先会去静态资源路径下查找index.html作为首页文件，若查找不到，则会去查找动态的index文件作为首页文件。
+例如，如果想使用静态的index.html页面作为项目首页，那么只需在resources/static目录下创建index.html文件即可。若想使用动态页面作为项目首页，则需在resources/templates目录下创建index.html（使用Thymeleaf模板）或者index.ftl（使用FreeMarker模板），然后在Controller中返回逻辑视图名。
+
+
+最后启动项目，输入“`http:/localhost：8080/`”就可以看到项目首页的内容了。
+
+**自定义favicon favicon.ico**
+
+是浏览器选项卡左上角的图标，可以放在静态资源路径下或者类路径下，静态资源路径下的favicon.ico优先级高于类路径下的favicon.ico。
+
+可以使用在线转换网站`https://jinaconvert.com/cn/convert-to-ico.php`将一张普通图片转为.ico图片，转换成功后，将文件重命名为favicon.ico，然后复制到resources/static目录下即可。
+
+![](https://github.com/Lumnca/Spring-Boot/blob/master/img/a49.png)
+
+
+重启项目就可以看到显示
+
+***
+
+<b id="a9"></b>
+
 ### :fallen_leaf:Cookie ###
 
 :arrow_double_up:[返回目录](#t)
@@ -829,28 +899,6 @@ public class Cookies {
 }
 
 ```
-
-可以在控制台看到如下输出：
-
-```
-getData方法开始执行！参数为:[]
-getUserById方法开始执行！参数为:[1]
-get user id:1
-getUserById方法执行结束！
-getUserById方法的返回值是"patty"
-getData方法执行结束！
-getData方法的返回值是"patty"
-
-delData方法开始执行！参数为:[]
-deleteUserById方法开始执行！参数为:[1]
-delete user id:1
-deleteUserById方法执行结束！
-deleteUserById方法的返回值是null
-delData方法执行结束！
-delData方法的返回值是null
-```
-
-
 
 **读取HTTP Cookie**
 

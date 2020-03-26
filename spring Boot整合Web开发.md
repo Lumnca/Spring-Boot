@@ -20,6 +20,10 @@
 
 :arrow_down:[Cookie](#a9)
 
+:arrow_down:[加载配置文件](#a10)
+
+:arrow_down:[注册拦截器](#a11)
+
 <b id="a1"></b>
 
 ### :fallen_leaf:返回JSON数据 ###
@@ -959,3 +963,205 @@ cookie.setMaxAge(0);
 response.addCookie(cookie);
 ```
 
+<b id="a10"></b>
+
+### :fallen_leaf:加载配置文件 ###
+
+:arrow_double_up:[返回目录](#t)
+
+Spring Boot推荐使用Java来完成相关的配置工作。在项目中，不建议将所有的配置放在一个配置类中，可以根据不同的需求提供不同的配置类，例如专门处理Spring Security的配置类、提供Bean的配置类、Spring MVC相关的配置类。这些配置类上都需要添加@Configuration注解，
+@ComponentScan 注解会扫描所有的Spring组件，也包括@Configuration。@ComponentScan 注解在项目入口类的@Spring BootApplication 注解中已经提供，因此在实际项目中只需要按需提供相关配置类即可。
+
+Spring Boot中并不推荐使用XML配置，建议尽量用Java配置代替XML配置，本书中的案例都是以Java配置为主。如果开发者需要使用XML配置，只需在resources目录下提供配置文件，然后通过@lmportResource加载配置文件即可。例如，有一个AdminUser类如下：
+
+```java
+public class AdminUser {
+
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+在resources目录下新建 beans.xml文件配置该类：
+
+```xml
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <bean class="app.beans.AdminUser" id="admin">
+        <property name="name" value="Lumnca"></property>
+    </bean>
+</beans>
+```
+
+然后创建Beans配置类，导入XML配置：
+
+```java
+@Configuration
+@ImportResource("classpath:beans.xml")
+public class Beans {
+}
+```
+
+最后在Controller中就可以直接导入AdminUser即可：
+
+```java
+@RestController
+public class BeanTest {
+    @Autowired
+    AdminUser adminUser;
+    @GetMapping("beans")
+    public String get(){
+        return adminUser.getName();
+    }
+}
+```
+
+
+<b id="a11"></b>
+
+### :fallen_leaf:注册拦截器 ###
+
+:arrow_double_up:[返回目录](#t)
+
+Spring MVC中提供了AOP风格的拦截器，拥有更加精细的拦截处理能力。Spring Boot中拦截器的注册更加方便，步骤如下：
+
+* 创建一个Spring Boot 项目，添加spring-boot-starter-web依赖。
+
+* 创建拦截器实现HandlerInterceptor接口，代码如下：
+
+```java
+public class MyInterceptor implements HandlerInterceptor {
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        System.out.println("MyInterceptor1>>>preHandle");
+        return true;
+    }
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView){
+        System.out.println("MyInterceptor1>>>postHandle");
+    }
+    @ Override public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        System.out.println("MyInterceptor1>>>afterCompletion");
+    }
+}
+```
+
+拦截器中的方法将按preHandle→Controller→postHandle→afterCompletion的顺序执行。注意，只有preHandle 方法返回true时后面的方法才会执行。当拦截器链内存在多个拦截器时，postHandler在拦截器链内的所有拦截器返回成功时才会调用，而afterCompletion 只有preHandle 返回true才调用，但若拦截器链内的第一个拦截器的preHandle方法返回false，则后面的方法都不会执行。
+
+
+* 配置拦截器。定义配置类进行拦截器的配置，代码如下：
+
+```java
+@Configuration
+public class WebMvcConfig implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new MyInterceptor())
+                .addPathPatterns("/**")
+                .excludePathPatterns("/aop2");
+    }
+}
+```
+
+自定义类实现WebMvcConfigurer接口，实现接口中的addlnterceptors方法。其中，addPathPatterns 表示拦截路径，excludePathPatterns表示排除的路径。
+
+* 最后进行测试可见aop2路径没有打印语句，aop1打印了语句。
+
+我么可以修改程序让他具备拦截匿名用户：
+
+首先建立一个登陆界面：
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h2>请先登录！</h2>
+    <form method="post" action="adminLogin">
+        <label for="id1">账号</label>
+        <input type="text" id="id1" name="id" placeholder="ID"><br>
+        <label for="pw1">密码</label>
+        <input type="password" name="pw" id="pw1"><br>
+        <input type="submit" value="提交">
+    </form>
+</body>
+</html>
+```
+
+然后就是配置登陆接口：
+
+```java
+@RestController
+public class LoginAuth {
+    @PostMapping("adminLogin")
+    public String login(@Param(value = "id")String id, @Param(value = "pw")String pw, HttpSession session){
+        if(id.equals("lumnca")&&pw.equals("123456")){
+            session.setAttribute("admin","lumnca");
+            return "登录成功!";
+        }
+        else{
+            return "登录失败!";
+        }
+    }
+}
+```
+
+然后修改拦截器：
+
+```java
+public class MyInterceptor implements HandlerInterceptor {
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        try {
+            if(null==request.getSession().getAttribute("admin")){
+                System.out.println("未登录账户!");
+                //跳转登陆界面
+                response.sendRedirect("http://127.0.0.1:8081/login.html");
+            }
+            else{
+                System.out.println("已登录！！");
+            }
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        return true;
+    }
+    @Override
+    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler, ModelAndView modelAndView){
+        System.out.println("MyInterceptor1>>>postHandle");
+    }
+    @ Override public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
+        System.out.println("MyInterceptor1>>>afterCompletion");
+    }
+}
+```
+
+
+修改配置类：
+
+```java
+@Configuration
+public class WebMvcConfig implements WebMvcConfigurer {
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(new MyInterceptor())
+                .addPathPatterns("/aop1")
+                .excludePathPatterns("/adminLogin");
+    }
+}
+```
+
+
+像这样就必须要登录后才能访问aop1界面，不然会一直跳转到登录界面。

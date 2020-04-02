@@ -54,7 +54,7 @@ JdbeTemplate是Spring提供的一套JDBC模板框架，利用AOP技术来解决�
 数据库配置：
 
 ```xml
-spring.datasource.url=jdbc:mysql://127.0.0.1/sgz?characterEncoding=utf8&useSSL=true
+spring.datasource.url=jdbc:mysql://127.0.0.1/sgz?characterEncoding=utf8&useSSL=true     --sgz改为你的数据库名称
 spring.datasource.username=root
 spring.datasource.password=123456
 spring.datasource.type=com.alibaba.druid.pool.DruidDataSource

@@ -45,7 +45,7 @@ Redis的Java客户端有很多，Spring Boot借助于Spring Data Redis为Redis�
     </dependencies>
 ```
 
-默认情况下，sprign-boot-straer-data-redis 使用的Redis 工具是Lettuce，考虑到有的开发者习惯使用Jedis，因此可以从配置中排除Lettuce 并引入品Jedis
+默认情况下，sprign-boot-straer-data-redis 使用的Redis 工具是Lettuce，考虑到有的开发者习惯使用Jedis，因此可以从配置中排除Lettuce 并引入Jedis
 
 数据库配置。在application文件下添加配置字段：
 

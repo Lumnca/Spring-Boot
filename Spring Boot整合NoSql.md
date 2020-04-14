@@ -1129,9 +1129,8 @@ public class RedisConfig {
         List<RedisNode>nodes=new ArrayList<>();
         for(Integer port: ports) {
             nodes.add(new RedisNode(host, port));
-            System.out.println(host+":"+port);
         }
-        configuration.setPassword(RedisPassword.of("chuan.868"));
+        configuration.setPassword(RedisPassword.of("你的密码"));
         configuration.setClusterNodes(nodes);
         return configuration;
     }

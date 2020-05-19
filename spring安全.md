@@ -914,8 +914,211 @@ update user set _password = '$2a$10$MvbX0ry6FKWeoGpLPnuL7OSeywPFZo5jApIoT1IghcwP
 
 **动态配置权限**
 
-动态配置权限需要在数据库中添加一张url模式表与一张模式对应权限表，然后实现自定义的FilterlnvocationSecurityMetadataSource，再修改配置即可，这里不做
-演示了，有兴趣可以自行了解。
+
+动态配置权限需要在数据库中添加一张url模式表与一张模式对应权限表，然后实现自定义的FilterlnvocationSecurityMetadataSource，再修改配置即可,下面列出步骤：
+
+
+添加数据库与对应的Mapper:
+
+```java
+public class Menu {
+    private Integer id;
+    private String pattern;
+    private List<Role> roles;
+
+    public List<Role> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(List<Role> roles) {
+        this.roles = roles;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public String getPattern() {
+        return pattern;
+    }
+
+    public void setPattern(String pattern) {
+        this.pattern = pattern;
+    }
+
+}
+```
+
+在前面3张表的基础上添加2张表
+
+表：Menu
+
+|id|pattern|
+|:--:|:---:|
+|1|Role_admin|
+|2|Role_user|
+
+表MenuRole
+
+|id|mid|rid|
+|:--:|:---:|:--:|
+|1|1|1|
+|2|2|2|
+
+
+建立Mapper：
+
+
+```java
+@Mapper
+public interface MenuMapper {
+    List<Menu> getAllMenus();
+}
+
+```
+
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="app.auth.MenuMapper">
+    <resultMap id="BaseResultMap" type="app.auth.Menu">
+        <id property="id" column="id"/>
+        <result property="pattern" column="pattern"/>
+        <collection property="roles" ofType="app.auth.Role">
+            <id property="id" column="rid"/>
+            <result property="name" column="rname"/>
+            <result property="nameZh" column="rnameZh"/>
+        </collection>
+    </resultMap>
+    <select id="getAllMenus" resultMap="BaseResultMap">
+      SELECT m.*,r.id AS rid,r.name AS rname,r.nameZh AS rnameZh FROM menu m LEFT JOIN menu_role mr ON m.id = mr.mid LEFT JOIN role r ON mr.rid=r.id;
+    </select>
+</mapper>
+```
+
+加下来添加配置文件
+
+构造url拦截器 CustomFilterInvocationSecurityMetadataSource
+
+
+```java
+@Component
+public class CustomFilterInvocationSecurityMetadataSource implements FilterInvocationSecurityMetadataSource {
+    AntPathMatcher antPathMatcher=new AntPathMatcher();
+    @Autowired
+    MenuMapper menuMapper;
+    @Override
+    public Collection<ConfigAttribute> getAttributes(Object o) throws IllegalArgumentException {
+        //获取url
+        String requestUrl = ((FilterInvocation) o).getRequestUrl();
+        List<Menu> allMenus = menuMapper.getAllMenus();
+        //进行匹配
+        for (Menu menu : allMenus) {
+            if (antPathMatcher.match(menu.getPattern(), requestUrl)) {
+                List<Role> roles = menu.getRoles();
+                String[] roleArr = new String[roles.size()];
+                for (int i = 0; i < roleArr.length; i++) {
+                    roleArr[i] = roles.get(i).getName();
+                }
+                //对应需要的权限
+                return SecurityConfig.createList(roleArr);
+            }
+        }
+        //没有匹配到构造一个没有登录的角色
+        return SecurityConfig.createList("ROLE_LOGIN");
+    }
+
+    @Override
+    public Collection<ConfigAttribute> getAllConfigAttributes() {
+        return null;
+    }
+
+    @Override
+    public boolean supports(Class<?> aClass) {
+        return FilterInvocation.class.isAssignableFrom(aClass);
+    }
+}
+```
+
+添加处理：CustomAccessDecisionManager
+
+```java
+@Component
+public class CustomAccessDecisionManager implements AccessDecisionManager {
+    @Override
+    public void decide(Authentication auth, Object o, Collection<ConfigAttribute> collection) throws AccessDeniedException, InsufficientAuthenticationException {
+        Collection<? extends GrantedAuthority> auths = auth.getAuthorities();
+        for (ConfigAttribute configAttribute : collection) {
+            //没有登录但是Session存在（通过验证！）
+            if ("ROLE_LOGIN".equals(configAttribute.getAttribute()) && auth instanceof UsernamePasswordAuthenticationToken) {
+                return;
+            }
+             //没有登录但是访问的是无拦截路由（通过验证！）
+            else if("ROLE_LOGIN".equals(configAttribute.getAttribute()) && !(auth instanceof UsernamePasswordAuthenticationToken)){
+                return;
+            }
+            //验证匹配（通过验证！）
+            for (GrantedAuthority authority : auths) {
+                if (configAttribute.getAttribute().equals(authority.getAuthority())) {
+                    return;
+                }
+            }
+            throw new AccessDeniedException("权限不足");
+        }
+    }
+    @Override
+    public boolean supports(ConfigAttribute configAttribute) {
+        return true;
+    }
+
+    @Override
+    public boolean supports(Class<?> aClass) {
+        return true;
+    }
+}
+
+```
+
+完成之后修改之前的权限配置文件，添加如下代码：
+
+```java
+ @Bean
+    RoleHierarchy roleHierarchy(){
+        RoleHierarchyImpl roleHierarchy = new RoleHierarchyImpl();
+        String hir = "ROLE_dba > ROLE_admin > ROLE_user";
+        roleHierarchy.setHierarchy(hir);
+        return roleHierarchy;
+    }
+    @Bean CustomFilterInvocationSecurityMetadataSource cfisms() {
+        return new CustomFilterInvocationSecurityMetadataSource();
+    }
+ @Override
+    protected void configure(HttpSecurity http)throws Exception{
+        http.authorizeRequests()
+                .withObjectPostProcessor(new ObjectPostProcessor<FilterSecurityInterceptor>() {
+                    @Override
+                    public <O extends FilterSecurityInterceptor> O postProcess(O object) {
+                        object.setSecurityMetadataSource(cfisms());
+                        object.setAccessDecisionManager(cadm());
+                        return object;
+                    }
+                })
+                .and()
+               //....后面省略
+
+}
+```
+
+
+这样就完成了动态基于数据库访问的shiro权限
+
 
 <b id="a4"></b>
 

@@ -69,12 +69,14 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication   //自动化配置加注解扫描
-public class app {
+public class App {
     public static  void main(String[] args){
-        SpringApplication.run(app.class,args);
+        SpringApplication.run(App.class,args);
     }
 }
 ```
+
+要注意的是一定要在包下创建启动类。
 
 **:three:web主体**
 

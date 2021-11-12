@@ -440,3 +440,52 @@ $(function () {
 ```
 
 然后登陆用户即可，密码为123,，两边都登陆后就可以实现登录，不过需要在目标用户输入用户名才行。
+
+当然也可以不用这种方式来实现。也可以指定接收对应路径来实现一对多或者一对一的方式如下：
+
+添加一个一对一或者一对多的路径：/app/user:
+
+```java
+    @MessageMapping("/user")
+    public void userChat(Message message)throws Exception {
+        ///topic/chat/ 后加自定义的接收路径
+        messagingTemplate.convertAndSend("/topic/chat/"+message.getTo(),message);
+    }
+```
+
+这里的Message为自己定义的数据类型：
+
+```java
+public class Message {
+    private String name;
+    private String content;
+    private String iden;
+    private Date date;
+    private Integer to;
+    ...
+}
+```
+
+然后在html为客户端添加接收路径：
+
+```js
+    function connect() {
+        if(!$("#name").val()){
+            return ;
+        }
+        var  socket = new SockJS("/chat");
+        stompClient = Stomp.over(socket);
+        stompClient.connect({},function (frame) {
+            setConnected(true);
+            stompClient.subscribe("/topic/greetings",function (greeting) {
+                console.log(greeting)
+                showGreeting(JSON.parse(greeting.body));
+            });
+              //自定义接收自己的路径
+            stompClient.subscribe("/topic/chat/"+$("#name").val(),function (chat) {
+                showGreeting(JSON.parse(chat.body));
+            });
+        });
+    }
+```
+    

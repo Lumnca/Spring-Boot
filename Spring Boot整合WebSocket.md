@@ -119,11 +119,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config){
         config.enableSimpleBroker("/topic");
-        config.setApplicationDestinationPrefixes("/app");
+        config.setApplicationDestinationPrefixes("/app","/app1");
     }
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry){
-        registry.addEndpoint("/chat").withSockJS();
+        registry.addEndpoint("/chat","/chat2").withSockJS();
     }
 }
 ```
@@ -136,8 +136,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
 ```java@Controller
 public class index {
-    @MessageMapping("/hello")
-    @SendTo("/topic/greetings")
+    @MessageMapping("/hello")  //接收/hello路径的消息
+    @SendTo("/topic/greetings")//发送到该路径目的地消息，接收改目的地的客户端将会收到这个消息
     public Message greeting(Message message)throws Exception{
         return message;
     }

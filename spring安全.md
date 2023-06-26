@@ -851,6 +851,61 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
     }
 }
 ```
+以上配置在Spring Boot2.7版本以后弃用，需要使用新的配置方式：
+
+```java
+@Configuration
+public class MySecurityConfig {
+    @Autowired
+    UserService userServer;
+    
+    @Bean
+    PasswordEncoder passwordEncoder(){
+        PasswordEncoder instance = NoOpPasswordEncoder.getInstance();
+        return instance;
+    }
+        //新的身份验证管理器Bean
+    @Bean
+    AuthenticationManager authenticationManager(HttpSecurity httpSecurity) throws Exception{
+        AuthenticationManager authenticationManager = httpSecurity.getSharedObject(AuthenticationManagerBuilder.class)
+                .userDetailsService(userServer)
+                .and()
+                .build();
+        return authenticationManager;
+    }
+        //多Security过滤链
+    @Bean
+    public SecurityFilterChain securityFilterChain(AuthenticationManager authenticationManager,HttpSecurity httpSecurity) throws Exception{
+        httpSecurity.authorizeRequests()
+                .requestMatchers("/admin/**")
+                .hasRole("admin")
+                .requestMatchers("/aqi/**")
+                .hasRole("aqi")
+                .requestMatchers("/user/**")
+                .hasRole("user")
+                .and()
+                .formLogin()
+                .loginProcessingUrl("/login.html")
+                .permitAll()
+                .and()
+                .csrf()
+                .disable();
+        return httpSecurity.build();
+    }
+        //放行的路由,可不写上面没有匹配的默认都放行
+    @Bean
+    WebSecurityCustomizer webSecurityCustomizer(){
+        return  new WebSecurityCustomizer() {
+            @Override
+            public void customize(WebSecurity web) {
+                web.ignoring().requestMatchers("/login.html","/static");
+            }
+        };
+    }
+
+}
+
+```
 
 再添加相应的控制器信息即可：
 

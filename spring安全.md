@@ -203,9 +203,13 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
                 .access("hasRole('USER') and  hasRole('ADMIN')")
                 .and()
                 .formLogin()
-                .loginPage("/login_page")
+                //登录的界面或者接口
+                .loginPage("/login_page.html")
+                //登录的接口名称
                 .loginProcessingUrl("/login")
+                //username字段名称
                 .usernameParameter("name")
+                //pw字段名称
                 .passwordParameter("passwd")
                 //成功处理
                 .successHandler(new AuthenticationSuccessHandler() {
@@ -261,7 +265,7 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 }
 ```
 
-像这样就可以实现JSON转递，你可以在login_page提供一个login接口的表单，如下：
+像这样就可以实现JSON转递，你可以在login_page.html提供一个login接口的表单，如下：
 
 ```html
 <form action="/login" method="post">
@@ -273,8 +277,7 @@ public class MySecurityConfig extends WebSecurityConfigurerAdapter {
 </form>
 ```
 
-
-让后登录成功后就会返回JOSN字符串。如果失败也会有相应的错误提示。
+注意里面的action和name字段要与配置文件一致！然后登录成功后就会返回JOSN字符串。如果失败也会有相应的错误提示。
 
 **登录注销配置**
 
